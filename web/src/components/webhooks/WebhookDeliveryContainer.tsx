@@ -1,18 +1,9 @@
 /**
- * WebhookDeliveryContainer - Container component for webhook delivery history
- *
- * This component encapsulates all webhook delivery-related state and operations:
- * - Loading and displaying webhook delivery records
- * - Filtering by job ID and status
- * - Pagination (limit/offset)
- * - Viewing delivery details
- *
- * It does NOT handle:
- * - Job submission or results viewing
- * - Webhook configuration (see WebhookConfig component)
- * - Retry/resend functionality (future enhancement)
- *
- * @module WebhookDeliveryContainer
+ * Purpose: Coordinate webhook-delivery inspection state for the automation route.
+ * Responsibilities: Load paginated delivery records, apply route-local filters, fetch individual delivery detail records, and feed the lazy-loaded webhook dashboard.
+ * Scope: Webhook inspection route coordination only; presentation lives in `WebhookDeliveries` and transport stays in the generated API client.
+ * Usage: Render from the automation route when operators need to inspect persisted delivery history.
+ * Invariants/Assumptions: Server data is authoritative, detail lookups may refine list rows with fuller payloads, and client-side status filtering remains a temporary view-layer refinement.
  */
 
 import {
@@ -29,6 +20,7 @@ import {
   type WebhookDeliveryRecord,
 } from "../../api";
 import { getApiBaseUrl } from "../../lib/api-config";
+import { reportRuntimeError } from "../../lib/runtime-errors";
 import type { DeliveryFilters } from "../../types/webhook";
 
 const WebhookDeliveries = lazy(() =>
@@ -76,14 +68,14 @@ export function WebhookDeliveryContainer() {
       });
 
       if (error) {
-        console.error("Failed to load webhook deliveries:", error);
+        reportRuntimeError("Failed to load webhook deliveries", error);
         return;
       }
 
       setDeliveries(data?.deliveries || []);
       setTotal(data?.total || 0);
     } catch (err) {
-      console.error("Error loading webhook deliveries:", err);
+      reportRuntimeError("Error loading webhook deliveries", err);
     } finally {
       setLoading(false);
     }
@@ -102,13 +94,13 @@ export function WebhookDeliveryContainer() {
         });
 
         if (error) {
-          console.error("Failed to load delivery detail:", error);
+          reportRuntimeError("Failed to load delivery detail", error);
           return null;
         }
 
         return data || null;
       } catch (err) {
-        console.error("Error loading delivery detail:", err);
+        reportRuntimeError("Error loading delivery detail", err);
         return null;
       } finally {
         setDetailLoading(false);

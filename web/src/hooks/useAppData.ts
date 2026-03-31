@@ -31,6 +31,7 @@ import type {
   Schedule,
 } from "./app-data/types";
 import { getApiErrorMessage } from "../lib/api-errors";
+import { reportRuntimeError } from "../lib/runtime-errors";
 import { useWebSocket, type WSMessage } from "./useWebSocket";
 
 export type {
@@ -46,7 +47,9 @@ type JobEntry = import("../types").JobEntry;
 type CrawlState = import("../api").CrawlState;
 
 function reportAppDataBackgroundError(scope: string, error: unknown) {
-  console.error(`Failed to fetch ${scope}:`, error);
+  reportRuntimeError(`Failed to fetch ${scope}`, error, {
+    fallback: `Failed to fetch ${scope}.`,
+  });
 }
 
 export function useAppData(): AppDataState & AppDataActions {

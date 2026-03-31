@@ -15,8 +15,8 @@ import type {
 import { useToast } from "../toast";
 import type { Profile } from "../../hooks/useAppData";
 import type { FormController } from "../../hooks/useFormState";
-import { getApiErrorMessage } from "../../lib/api-errors";
 import { useBatches } from "../../hooks/useBatches";
+import { reportRuntimeError } from "../../lib/runtime-errors";
 import { BatchList } from "../../components/BatchList";
 import {
   BatchForm,
@@ -141,13 +141,15 @@ export function BatchContainer(props: BatchContainerProps) {
           },
         });
       } catch (err) {
-        console.error("Failed to submit batch scrape:", err);
         toast.update(toastId, {
           tone: "error",
           title: "Failed to submit scrape batch",
-          description: getApiErrorMessage(
+          description: reportRuntimeError(
+            "Failed to submit batch scrape",
             err,
-            "Unable to queue the scrape batch.",
+            {
+              fallback: "Unable to queue the scrape batch.",
+            },
           ),
         });
       }
@@ -181,14 +183,12 @@ export function BatchContainer(props: BatchContainerProps) {
           },
         });
       } catch (err) {
-        console.error("Failed to submit batch crawl:", err);
         toast.update(toastId, {
           tone: "error",
           title: "Failed to submit crawl batch",
-          description: getApiErrorMessage(
-            err,
-            "Unable to queue the crawl batch.",
-          ),
+          description: reportRuntimeError("Failed to submit batch crawl", err, {
+            fallback: "Unable to queue the crawl batch.",
+          }),
         });
       }
     },
@@ -222,13 +222,15 @@ export function BatchContainer(props: BatchContainerProps) {
           },
         });
       } catch (err) {
-        console.error("Failed to submit batch research:", err);
         toast.update(toastId, {
           tone: "error",
           title: "Failed to submit research batch",
-          description: getApiErrorMessage(
+          description: reportRuntimeError(
+            "Failed to submit batch research",
             err,
-            "Unable to queue the research batch.",
+            {
+              fallback: "Unable to queue the research batch.",
+            },
           ),
         });
       }
@@ -246,14 +248,12 @@ export function BatchContainer(props: BatchContainerProps) {
           description: `Loaded the latest details for batch ${batchId.slice(0, 8)}…`,
         });
       } catch (err) {
-        console.error("Failed to load batch details:", err);
         toast.show({
           tone: "error",
           title: "Failed to load batch details",
-          description: getApiErrorMessage(
-            err,
-            "Unable to refresh the selected batch.",
-          ),
+          description: reportRuntimeError("Failed to load batch details", err, {
+            fallback: "Unable to refresh the selected batch.",
+          }),
         });
       }
     },
@@ -275,14 +275,12 @@ export function BatchContainer(props: BatchContainerProps) {
           description: `Batch ${batchId.slice(0, 8)}… is no longer processing.`,
         });
       } catch (err) {
-        console.error("Failed to cancel batch:", err);
         toast.update(toastId, {
           tone: "error",
           title: "Failed to cancel batch",
-          description: getApiErrorMessage(
-            err,
-            "Unable to cancel the selected batch.",
-          ),
+          description: reportRuntimeError("Failed to cancel batch", err, {
+            fallback: "Unable to cancel the selected batch.",
+          }),
         });
       }
     },

@@ -8,6 +8,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { reportRuntimeError } from "../lib/runtime-errors";
+
 export type WSConnectionState =
   | "connecting"
   | "connected"
@@ -103,7 +105,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       try {
         wsRef.current.send(JSON.stringify(msg));
       } catch (err) {
-        console.error("Failed to send WebSocket message:", err);
+        reportRuntimeError("Failed to send WebSocket message", err);
       }
     }
   }, []);
@@ -173,7 +175,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
           const msg = JSON.parse(event.data) as WSMessage;
           onMessageRef.current?.(msg);
         } catch (err) {
-          console.error("Failed to parse WebSocket message:", err);
+          reportRuntimeError("Failed to parse WebSocket message", err);
         }
       };
 
@@ -184,7 +186,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
 
         const err = new Error("WebSocket error");
         setError(err);
-        console.error("WebSocket error:", event);
+        reportRuntimeError("WebSocket error", event);
       };
 
       ws.onclose = () => {

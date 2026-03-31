@@ -7,6 +7,8 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from "react";
+
+import { reportRuntimeError } from "../lib/runtime-errors";
 import type { ExportInspection, ExportSchedule } from "../api";
 import type { ExportScheduleManagerProps } from "../types/export-schedule";
 import { useExportScheduleForm } from "../hooks/useExportScheduleForm";
@@ -104,7 +106,7 @@ export function ExportScheduleManager({
         setDeleteConfirmId(null);
         onRefresh();
       } catch (err) {
-        console.error("Failed to delete export schedule:", err);
+        reportRuntimeError("Failed to delete export schedule", err);
       }
     },
     [onDelete, onRefresh],
@@ -116,7 +118,7 @@ export function ExportScheduleManager({
         await onToggleEnabled(id, enabled);
         onRefresh();
       } catch (err) {
-        console.error("Failed to toggle export schedule:", err);
+        reportRuntimeError("Failed to toggle export schedule", err);
       }
     },
     [onToggleEnabled, onRefresh],
@@ -144,7 +146,7 @@ export function ExportScheduleManager({
         setShowHistory(true);
       } catch (err) {
         if (requestSeq === historyRequestSeqRef.current) {
-          console.error("Failed to load export history:", err);
+          reportRuntimeError("Failed to load export history", err);
         }
       } finally {
         if (requestSeq === historyRequestSeqRef.current) {

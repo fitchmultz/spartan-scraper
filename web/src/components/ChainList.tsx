@@ -7,8 +7,8 @@
  */
 import { useState, useCallback } from "react";
 import type { JobChain, ChainCreateRequest } from "../api";
-import { getApiErrorMessage } from "../lib/api-errors";
 import { formatDateTime } from "../lib/formatting";
+import { reportRuntimeError } from "../lib/runtime-errors";
 import { ActionEmptyState } from "./ActionEmptyState";
 import { useToast } from "./toast";
 
@@ -63,14 +63,12 @@ export function ChainList({
           description: "The saved workflow has been removed.",
         });
       } catch (err) {
-        console.error("Failed to delete chain:", err);
         toast.show({
           tone: "error",
           title: "Failed to delete chain",
-          description: getApiErrorMessage(
-            err,
-            "Unable to delete the selected chain.",
-          ),
+          description: reportRuntimeError("Failed to delete chain", err, {
+            fallback: "Unable to delete the selected chain.",
+          }),
         });
       }
     },
@@ -114,14 +112,12 @@ export function ChainList({
         description: "The workflow is now queued with the selected overrides.",
       });
     } catch (err) {
-      console.error("Failed to submit chain:", err);
       toast.show({
         tone: "error",
         title: "Failed to submit chain",
-        description: getApiErrorMessage(
-          err,
-          "Unable to start the selected chain.",
-        ),
+        description: reportRuntimeError("Failed to submit chain", err, {
+          fallback: "Unable to start the selected chain.",
+        }),
       });
     }
   }, [closeSubmitModal, onSubmit, overridesInput, submittingChain, toast]);

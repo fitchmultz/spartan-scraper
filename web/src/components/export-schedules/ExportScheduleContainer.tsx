@@ -20,8 +20,8 @@ import {
   type ExportScheduleRequest,
 } from "../../api";
 import { getApiBaseUrl } from "../../lib/api-config";
-import { getApiErrorMessage } from "../../lib/api-errors";
 import { useToast } from "../toast";
+import { reportRuntimeError } from "../../lib/runtime-errors";
 import type { ExportSchedulePromotionSeed } from "../../types/promotion";
 
 const ExportScheduleManager = lazy(() =>
@@ -54,28 +54,27 @@ export function ExportScheduleContainer({
         baseUrl: getApiBaseUrl(),
       });
       if (error) {
-        const message = getApiErrorMessage(
-          error,
-          "Failed to load export schedules.",
-        );
-        console.error("Failed to load export schedules:", error);
         toast.show({
           tone: "error",
           title: "Failed to load export schedules",
-          description: message,
+          description: reportRuntimeError(
+            "Failed to load export schedules",
+            error,
+            {
+              fallback: "Failed to load export schedules.",
+            },
+          ),
         });
         return;
       }
       setSchedules(data?.schedules || []);
     } catch (err) {
-      console.error("Error loading export schedules:", err);
       toast.show({
         tone: "error",
         title: "Failed to load export schedules",
-        description: getApiErrorMessage(
-          err,
-          "Failed to load export schedules.",
-        ),
+        description: reportRuntimeError("Error loading export schedules", err, {
+          fallback: "Failed to load export schedules.",
+        }),
       });
     } finally {
       setSchedulesLoading(false);
@@ -96,14 +95,16 @@ export function ExportScheduleContainer({
         body: request,
       });
       if (error) {
-        const message = getApiErrorMessage(
-          error,
-          "Failed to create export schedule.",
-        );
         toast.update(toastId, {
           tone: "error",
           title: "Failed to create export schedule",
-          description: message,
+          description: reportRuntimeError(
+            "Failed to create export schedule",
+            error,
+            {
+              fallback: "Failed to create export schedule.",
+            },
+          ),
         });
         throw error;
       }
@@ -132,14 +133,16 @@ export function ExportScheduleContainer({
         body: request,
       });
       if (error) {
-        const message = getApiErrorMessage(
-          error,
-          "Failed to update export schedule.",
-        );
         toast.update(toastId, {
           tone: "error",
           title: "Failed to update export schedule",
-          description: message,
+          description: reportRuntimeError(
+            "Failed to update export schedule",
+            error,
+            {
+              fallback: "Failed to update export schedule.",
+            },
+          ),
         });
         throw error;
       }
@@ -165,14 +168,16 @@ export function ExportScheduleContainer({
         path: { id },
       });
       if (error) {
-        const message = getApiErrorMessage(
-          error,
-          "Failed to delete export schedule.",
-        );
         toast.update(toastId, {
           tone: "error",
           title: "Failed to delete export schedule",
-          description: message,
+          description: reportRuntimeError(
+            "Failed to delete export schedule",
+            error,
+            {
+              fallback: "Failed to delete export schedule.",
+            },
+          ),
         });
         throw error;
       }
@@ -201,14 +206,16 @@ export function ExportScheduleContainer({
         path: { id },
       });
       if (getError) {
-        const message = getApiErrorMessage(
-          getError,
-          "Failed to load export schedule.",
-        );
         toast.update(toastId, {
           tone: "error",
           title: "Failed to update export schedule",
-          description: message,
+          description: reportRuntimeError(
+            "Failed to load export schedule",
+            getError,
+            {
+              fallback: "Failed to load export schedule.",
+            },
+          ),
         });
         throw getError;
       }
@@ -235,14 +242,16 @@ export function ExportScheduleContainer({
         },
       });
       if (updateError) {
-        const message = getApiErrorMessage(
-          updateError,
-          "Failed to update export schedule.",
-        );
         toast.update(toastId, {
           tone: "error",
           title: "Failed to update export schedule",
-          description: message,
+          description: reportRuntimeError(
+            "Failed to update export schedule",
+            updateError,
+            {
+              fallback: "Failed to update export schedule.",
+            },
+          ),
         });
         throw updateError;
       }
@@ -268,14 +277,16 @@ export function ExportScheduleContainer({
         query: { limit, offset },
       });
       if (error) {
-        const message = getApiErrorMessage(
-          error,
-          "Failed to load export history.",
-        );
         toast.show({
           tone: "error",
           title: "Failed to load export history",
-          description: message,
+          description: reportRuntimeError(
+            "Failed to load export history",
+            error,
+            {
+              fallback: "Failed to load export history.",
+            },
+          ),
         });
         throw error;
       }

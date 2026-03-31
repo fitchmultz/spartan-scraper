@@ -29,6 +29,14 @@ import (
 	"time"
 )
 
+func readAPIResponseBody(resp *http.Response) ([]byte, error) {
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+	return respBody, nil
+}
+
 func submitBatchScrapeViaAPI(ctx context.Context, port string, req BatchScrapeRequest) (*BatchResponse, error) {
 	url := fmt.Sprintf("http://localhost:%s/v1/jobs/batch/scrape", port)
 	return submitBatchViaAPI(ctx, url, req)
@@ -64,7 +72,10 @@ func submitBatchViaAPI(ctx context.Context, url string, req interface{}) (*Batch
 	}
 	defer resp.Body.Close()
 
-	respBody, _ := io.ReadAll(resp.Body)
+	respBody, err := readAPIResponseBody(resp)
+	if err != nil {
+		return nil, err
+	}
 
 	if resp.StatusCode != http.StatusCreated {
 		return nil, fmt.Errorf("API error (%d): %s", resp.StatusCode, string(respBody))
@@ -93,7 +104,10 @@ func listBatchesViaAPI(ctx context.Context, port string, limit, offset int) (*Ba
 	}
 	defer resp.Body.Close()
 
-	respBody, _ := io.ReadAll(resp.Body)
+	respBody, err := readAPIResponseBody(resp)
+	if err != nil {
+		return nil, err
+	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("API error (%d): %s", resp.StatusCode, string(respBody))
 	}
@@ -124,7 +138,10 @@ func getBatchStatusViaAPI(ctx context.Context, port, batchID string, includeJobs
 	}
 	defer resp.Body.Close()
 
-	respBody, _ := io.ReadAll(resp.Body)
+	respBody, err := readAPIResponseBody(resp)
+	if err != nil {
+		return nil, err
+	}
 
 	if resp.StatusCode == http.StatusNotFound {
 		return nil, fmt.Errorf("batch %s not found", batchID)
@@ -156,7 +173,10 @@ func cancelBatchViaAPI(ctx context.Context, port, batchID string) (*BatchRespons
 	}
 	defer resp.Body.Close()
 
-	respBody, _ := io.ReadAll(resp.Body)
+	respBody, err := readAPIResponseBody(resp)
+	if err != nil {
+		return nil, err
+	}
 	if resp.StatusCode == http.StatusNotFound {
 		return nil, fmt.Errorf("batch %s not found", batchID)
 	}

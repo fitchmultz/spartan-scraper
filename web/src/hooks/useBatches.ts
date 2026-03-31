@@ -21,6 +21,7 @@ import {
   type Job,
 } from "../api";
 import { getApiBaseUrl } from "../lib/api-config";
+import { reportRuntimeError } from "../lib/runtime-errors";
 
 const POLL_INTERVAL_MS = 5000;
 const DEFAULT_BATCH_PAGE_SIZE = 25;
@@ -484,7 +485,7 @@ export function useBatches() {
 
         return updated;
       } catch (err) {
-        console.error("Failed to refresh batch:", err);
+        reportRuntimeError("Failed to refresh batch", err);
         throw err;
       }
     },

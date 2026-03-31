@@ -7,6 +7,8 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+
+import { reportRuntimeError } from "../lib/runtime-errors";
 import type { Watch, WatchCheckInspection } from "../api";
 import type { WatchManagerProps } from "../types/watch";
 import { useWatchForm } from "../hooks/useWatchForm";
@@ -191,7 +193,7 @@ export function WatchManager({
         }
         onRefresh();
       } catch (err) {
-        console.error("Failed to delete watch:", err);
+        reportRuntimeError("Failed to delete watch", err);
       }
     },
     [historyWatch?.id, onDelete, onRefresh],
@@ -207,7 +209,7 @@ export function WatchManager({
           setCheckInspection(inspection);
         }
       } catch (err) {
-        console.error("Check failed:", err);
+        reportRuntimeError("Check failed", err);
       } finally {
         setCheckingId(null);
       }

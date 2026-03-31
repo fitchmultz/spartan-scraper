@@ -1,17 +1,9 @@
 /**
- * ChainContainer - Container component for chain management functionality
- *
- * This component encapsulates all chain-related state and operations:
- * - Loading and displaying job chains
- * - Creating and deleting chains
- * - Submitting chains to create jobs
- *
- * It does NOT handle:
- * - Job submission or results viewing
- * - Watch management
- * - Batch operations
- *
- * @module ChainContainer
+ * Purpose: Coordinate chain-management data loading and mutations for the automation route.
+ * Responsibilities: Fetch saved chains, proxy create/delete/submit actions to the API, and keep the lazy-loaded chain builder/list wired to authoritative server state.
+ * Scope: Chain route container behavior only; presentational chain inventory and builder UX live in sibling components.
+ * Usage: Render from the automation route and optionally provide `onChainSubmit` when parent job dashboards should refresh after chain submission.
+ * Invariants/Assumptions: The API remains the source of truth for saved chains, chain submissions may fan out into multiple jobs, and lazy-loaded child components should not own transport concerns.
  */
 
 import { useCallback, useEffect, useState, Suspense, lazy } from "react";
@@ -24,6 +16,7 @@ import {
   type ChainCreateRequest,
 } from "../../api";
 import { getApiBaseUrl } from "../../lib/api-config";
+import { reportRuntimeError } from "../../lib/runtime-errors";
 
 const ChainBuilder = lazy(() =>
   import("../../components/ChainBuilder").then((mod) => ({
@@ -49,7 +42,7 @@ export function ChainContainer({ onChainSubmit }: ChainContainerProps) {
       if (error) throw error;
       setChains(data?.chains || []);
     } catch (err) {
-      console.error("Failed to load chains:", err);
+      reportRuntimeError("Failed to load chains", err);
     } finally {
       setChainsLoading(false);
     }

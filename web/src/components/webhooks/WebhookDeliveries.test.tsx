@@ -220,7 +220,9 @@ describe("WebhookDeliveryContainer", () => {
 
     await waitFor(() => {
       expect(consoleSpy).toHaveBeenCalledWith(
-        "Failed to load webhook deliveries:",
+        expect.stringContaining(
+          "Failed to load webhook deliveries: Network error",
+        ),
         expect.anything(),
       );
     });
@@ -453,7 +455,7 @@ describe("WebhookDeliveryContainer", () => {
 
     await waitFor(() => {
       expect(consoleSpy).toHaveBeenCalledWith(
-        "Failed to load delivery detail:",
+        expect.stringContaining("Failed to load delivery detail: Not found"),
         expect.anything(),
       );
     });

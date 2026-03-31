@@ -21,8 +21,8 @@ import {
   type WatchInput,
 } from "../../api";
 import { getApiBaseUrl } from "../../lib/api-config";
-import { getApiErrorMessage } from "../../lib/api-errors";
 import { useToast } from "../toast";
+import { reportRuntimeError } from "../../lib/runtime-errors";
 import type { WatchPromotionSeed } from "../../types/promotion";
 
 const WatchManager = lazy(() =>
@@ -51,22 +51,23 @@ export function WatchContainer({
     try {
       const { data, error } = await listWatches({ baseUrl: getApiBaseUrl() });
       if (error) {
-        const message = getApiErrorMessage(error, "Failed to load watches.");
-        console.error("Failed to load watches:", error);
         toast.show({
           tone: "error",
           title: "Failed to load watches",
-          description: message,
+          description: reportRuntimeError("Failed to load watches", error, {
+            fallback: "Failed to load watches.",
+          }),
         });
         return;
       }
       setWatches(data?.watches || []);
     } catch (err) {
-      console.error("Error loading watches:", err);
       toast.show({
         tone: "error",
         title: "Failed to load watches",
-        description: getApiErrorMessage(err, "Failed to load watches."),
+        description: reportRuntimeError("Error loading watches", err, {
+          fallback: "Failed to load watches.",
+        }),
       });
     } finally {
       setWatchesLoading(false);
@@ -85,11 +86,12 @@ export function WatchContainer({
         body: input,
       });
       if (error) {
-        const message = getApiErrorMessage(error, "Failed to create watch.");
         toast.update(toastId, {
           tone: "error",
           title: "Failed to create watch",
-          description: message,
+          description: reportRuntimeError("Failed to create watch", error, {
+            fallback: "Failed to create watch.",
+          }),
         });
         throw error;
       }
@@ -116,11 +118,12 @@ export function WatchContainer({
         body: input,
       });
       if (error) {
-        const message = getApiErrorMessage(error, "Failed to update watch.");
         toast.update(toastId, {
           tone: "error",
           title: "Failed to update watch",
-          description: message,
+          description: reportRuntimeError("Failed to update watch", error, {
+            fallback: "Failed to update watch.",
+          }),
         });
         throw error;
       }
@@ -146,11 +149,12 @@ export function WatchContainer({
         path: { id },
       });
       if (error) {
-        const message = getApiErrorMessage(error, "Failed to delete watch.");
         toast.update(toastId, {
           tone: "error",
           title: "Failed to delete watch",
-          description: message,
+          description: reportRuntimeError("Failed to delete watch", error, {
+            fallback: "Failed to delete watch.",
+          }),
         });
         throw error;
       }
@@ -177,11 +181,12 @@ export function WatchContainer({
         path: { id },
       });
       if (error) {
-        const message = getApiErrorMessage(error, "Failed to run watch check.");
         toast.update(toastId, {
           tone: "error",
           title: "Failed to run watch check",
-          description: message,
+          description: reportRuntimeError("Failed to run watch check", error, {
+            fallback: "Failed to run watch check.",
+          }),
         });
         throw error;
       }
@@ -213,14 +218,16 @@ export function WatchContainer({
         query: { limit, offset },
       });
       if (error) {
-        const message = getApiErrorMessage(
-          error,
-          "Failed to load watch history.",
-        );
         toast.show({
           tone: "error",
           title: "Failed to load watch history",
-          description: message,
+          description: reportRuntimeError(
+            "Failed to load watch history",
+            error,
+            {
+              fallback: "Failed to load watch history.",
+            },
+          ),
         });
         throw error;
       }
@@ -239,14 +246,16 @@ export function WatchContainer({
         path: { id: watchId, checkId },
       });
       if (error) {
-        const message = getApiErrorMessage(
-          error,
-          "Failed to load watch check details.",
-        );
         toast.show({
           tone: "error",
           title: "Failed to load watch check",
-          description: message,
+          description: reportRuntimeError(
+            "Failed to load watch check details",
+            error,
+            {
+              fallback: "Failed to load watch check details.",
+            },
+          ),
         });
         throw error;
       }
