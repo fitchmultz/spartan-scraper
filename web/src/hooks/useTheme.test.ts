@@ -1,7 +1,9 @@
 /**
- * Tests for useTheme hook
- *
- * @module useTheme.test
+ * Purpose: Verify the shared theme hook keeps browser theme state synchronized with storage and media preferences.
+ * Responsibilities: Assert initialization, toggling, system-theme resolution, and persisted theme writes.
+ * Scope: `useTheme` hook behavior only.
+ * Usage: Run with Vitest.
+ * Invariants/Assumptions: `localStorage` and `matchMedia` are mocked, and DOM dataset/class updates happen synchronously during hook actions.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";

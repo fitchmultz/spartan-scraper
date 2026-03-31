@@ -1,15 +1,9 @@
 /**
- * useExportScheduleForm Hook
- *
- * Manages form state and validation for export schedule creation/editing.
- * Encapsulates form field updates, validation logic, and submission handling.
- *
- * This hook does NOT handle:
- * - API calls (those are passed as callbacks)
- * - Modal visibility state
- * - Schedule list management
- *
- * @module hooks/useExportScheduleForm
+ * Purpose: Manage export-schedule authoring state for create and edit flows.
+ * Responsibilities: Own form field state, validate local/webhook destination rules, seed drafts for editing or promotion, and submit typed create/update payloads.
+ * Scope: Export-schedule form state only; modal visibility, list refreshes, and network implementations stay in the calling manager/container.
+ * Usage: Call from `ExportScheduleManager` and wire the returned state/actions into `ExportScheduleForm`.
+ * Invariants/Assumptions: Local destinations must stay within `DATA_DIR/exports`, webhook URLs are syntax-validated before submit, and shape/transform remain mutually exclusive.
  */
 
 import { useState, useCallback } from "react";

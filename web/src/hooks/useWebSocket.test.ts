@@ -1,7 +1,9 @@
 /**
- * Tests for useWebSocket hook.
- *
- * @module useWebSocket.test
+ * Purpose: Verify the shared WebSocket hook manages connection lifecycle, parsing, and cleanup safely.
+ * Responsibilities: Assert connect/disconnect behavior, message handling, error reporting, and strict-mode-safe cleanup paths.
+ * Scope: `useWebSocket` hook behavior only.
+ * Usage: Run with Vitest.
+ * Invariants/Assumptions: The browser `WebSocket` global is fully mocked, and tests drive lifecycle events through the mock instance.
  */
 
 import { act, renderHook } from "@testing-library/react";

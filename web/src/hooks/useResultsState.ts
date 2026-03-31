@@ -8,6 +8,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { loadResults as loadResultsUtil } from "../lib/results";
+import { reportRuntimeError } from "../lib/runtime-errors";
 import type {
   AgenticResearchItem,
   CitationItem,
@@ -107,7 +108,9 @@ export function useResultsState(): ResultsState & ResultsActions {
       );
 
       if (result.error) {
-        console.error(result.error);
+        reportRuntimeError("Failed to load results", result.error, {
+          fallback: result.error,
+        });
         return;
       }
 

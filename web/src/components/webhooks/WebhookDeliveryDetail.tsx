@@ -1,14 +1,9 @@
 /**
- * WebhookDeliveryDetail Component
- *
- * Modal component for displaying detailed information about a webhook delivery.
- * Shows full metadata, request payload, response body, retry history, and error details.
- *
- * This component does NOT handle:
- * - API calls
- * - State management
- *
- * @module components/webhooks/WebhookDeliveryDetail
+ * Purpose: Render the modal detail view for one webhook delivery record.
+ * Responsibilities: Present the full delivery payload, response metadata, retry history, and close interactions in a focused inspection modal.
+ * Scope: Detail-view presentation only; data loading and record selection stay in `WebhookDeliveryContainer`.
+ * Usage: Mount from `WebhookDeliveries` when an operator opens one delivery for inspection.
+ * Invariants/Assumptions: The provided delivery record is already sanitized for browser display, and the modal should stay dismissible via overlay click or Escape.
  */
 
 import type { WebhookDeliveryDetailProps } from "../../types/webhook";

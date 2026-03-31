@@ -1,14 +1,9 @@
 /**
- * WebhookDeliveryFilters Component
- *
- * Filter controls for the webhook delivery dashboard.
- * Provides inputs for job ID filtering and status selection.
- *
- * This component does NOT handle:
- * - API calls
- * - State persistence
- *
- * @module components/webhooks/WebhookDeliveryFilters
+ * Purpose: Render webhook-delivery filter controls for the automation workspace.
+ * Responsibilities: Capture job/status filter inputs, submit filter changes, and expose reset behavior without owning persistence.
+ * Scope: Filter-form presentation only; list loading and canonical filter state stay in `WebhookDeliveryContainer`.
+ * Usage: Mount inside `WebhookDeliveries` with current filter values and callbacks.
+ * Invariants/Assumptions: Filter changes are controlled by the parent, and submit/reset actions delegate immediately to caller-provided handlers.
  */
 
 import type {

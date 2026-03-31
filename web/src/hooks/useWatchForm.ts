@@ -1,15 +1,9 @@
 /**
- * useWatchForm Hook
- *
- * Manages form state and validation for watch creation/editing.
- * Encapsulates form field updates, validation logic, and submission handling.
- *
- * This hook does NOT handle:
- * - API calls (those are passed as callbacks)
- * - Modal visibility state
- * - Watch list management
- *
- * @module hooks/useWatchForm
+ * Purpose: Manage watch authoring state for create and edit flows.
+ * Responsibilities: Own watch form fields, validate required inputs, seed edit or promotion drafts, and submit typed watch payloads.
+ * Scope: Watch form state only; modal visibility, list refreshes, and network mutations stay in the calling manager/container.
+ * Usage: Call from `WatchManager` and pass the returned state/actions into the watch form component.
+ * Invariants/Assumptions: Form validation runs before every submit attempt, edit state always reflects one persisted watch ID or a fresh draft, and reset returns the canonical default watch draft.
  */
 
 import { useState, useCallback } from "react";

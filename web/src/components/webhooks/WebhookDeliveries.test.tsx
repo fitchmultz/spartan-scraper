@@ -1,15 +1,9 @@
 /**
- * WebhookDeliveries Tests
- *
- * Tests for the webhook delivery dashboard components covering:
- * - List rendering with mocked deliveries
- * - Filter functionality (job ID, status)
- * - Pagination behavior
- * - Detail view rendering
- * - Loading states
- * - Error handling
- *
- * @module WebhookDeliveriesTests
+ * Purpose: Verify the webhook-delivery automation surface renders and filters persisted delivery history correctly.
+ * Responsibilities: Assert list rendering, filter behavior, pagination, detail inspection, loading states, and error recovery paths.
+ * Scope: `WebhookDeliveryContainer` integration behavior only.
+ * Usage: Run with Vitest.
+ * Invariants/Assumptions: API calls are mocked, route-local state is authoritative in the container, and detail responses refine the selected row view.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";

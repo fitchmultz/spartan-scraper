@@ -1,15 +1,9 @@
 /**
- * WebhookDeliveryList Component
- *
- * Table component for displaying webhook deliveries with status badges,
- * timestamps, and action buttons.
- *
- * This component does NOT handle:
- * - API calls
- * - Modal dialogs
- * - Pagination logic
- *
- * @module components/webhooks/WebhookDeliveryList
+ * Purpose: Render the tabular webhook-delivery list with copy and detail actions.
+ * Responsibilities: Format delivery identifiers and URLs for compact display, surface clipboard copy failures through the shared runtime reporter, and dispatch row-level detail intents.
+ * Scope: Delivery-list presentation only; data loading, filtering, and modal state stay in sibling webhook components.
+ * Usage: Mount inside `WebhookDeliveries` with authoritative delivery rows and an `onViewDetail` callback.
+ * Invariants/Assumptions: Delivery rows are already sanitized for browser display, missing IDs/URLs degrade gracefully, and clipboard failures should not throw back into React.
  */
 
 import type { WebhookDeliveryListProps } from "../../types/webhook";
@@ -22,6 +16,7 @@ import {
   getDeliveryStatusBackgroundColor,
   getDeliveryStatusColor,
 } from "../../lib/webhook-utils";
+import { reportRuntimeError } from "../../lib/runtime-errors";
 
 /**
  * Truncate ID for display
@@ -44,7 +39,7 @@ async function copyToClipboard(text: string): Promise<void> {
   try {
     await navigator.clipboard.writeText(text);
   } catch (err) {
-    console.error("Failed to copy to clipboard:", err);
+    reportRuntimeError("Failed to copy to clipboard", err);
   }
 }
 

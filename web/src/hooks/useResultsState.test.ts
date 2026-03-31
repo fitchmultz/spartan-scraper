@@ -10,11 +10,16 @@ import { renderHook, act } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { loadResults as loadResultsUtil } from "../lib/results";
+import { reportRuntimeError } from "../lib/runtime-errors";
 import type { ResultItem } from "../types";
 import { useResultsState } from "./useResultsState";
 
 vi.mock("../lib/results", () => ({
   loadResults: vi.fn(),
+}));
+
+vi.mock("../lib/runtime-errors", () => ({
+  reportRuntimeError: vi.fn(),
 }));
 
 describe("useResultsState", () => {
@@ -67,5 +72,27 @@ describe("useResultsState", () => {
     expect(result.current.resultEvidence).toEqual([]);
     expect(result.current.resultClusters).toEqual([]);
     expect(result.current.resultCitations).toEqual([]);
+  });
+
+  it("reports load failures through the shared runtime reporter", async () => {
+    vi.mocked(loadResultsUtil).mockResolvedValue({
+      error: "job results are unavailable",
+    } as never);
+
+    const { result } = renderHook(() => useResultsState());
+
+    await act(async () => {
+      await result.current.loadResults("job-2");
+    });
+
+    expect(reportRuntimeError).toHaveBeenCalledWith(
+      "Failed to load results",
+      "job results are unavailable",
+      {
+        fallback: "job results are unavailable",
+      },
+    );
+    expect(result.current.resultItems).toEqual([]);
+    expect(result.current.rawResult).toBeNull();
   });
 });
