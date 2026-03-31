@@ -140,12 +140,6 @@ export function CommandPalette({
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (isOpen) {
-      setSearch("");
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
     if (!isOpen) {
       return;
     }

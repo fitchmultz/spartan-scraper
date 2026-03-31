@@ -7,14 +7,16 @@ import { describe, it, expect } from "vitest";
 import {
   buildAIExtractOptions,
   buildAuth,
-  parseProcessors,
   buildPipelineOptions,
-  buildScrapeRequest,
   buildCrawlRequest,
   buildResearchAgenticOptions,
   buildResearchRequest,
+  buildScrapeRequest,
+  getHttpUrlValidationState,
+  getInvalidHttpUrls,
   isValidHttpUrl,
   parseAIExtractSchemaText,
+  parseProcessors,
   parseUrlList,
 } from "./form-utils";
 
@@ -143,6 +145,27 @@ describe("isValidHttpUrl", () => {
     expect(isValidHttpUrl("ftp://example.com/file.txt")).toBe(false);
     expect(isValidHttpUrl("https:")).toBe(false);
     expect(isValidHttpUrl("not-a-url")).toBe(false);
+  });
+});
+
+describe("getHttpUrlValidationState", () => {
+  it("distinguishes missing URLs from malformed ones", () => {
+    expect(getHttpUrlValidationState("   ")).toBe("missing");
+    expect(getHttpUrlValidationState("notaurl")).toBe("invalid");
+    expect(getHttpUrlValidationState("https://example.com")).toBeNull();
+  });
+});
+
+describe("getInvalidHttpUrls", () => {
+  it("returns only malformed HTTP(S) URLs from a parsed list", () => {
+    expect(
+      getInvalidHttpUrls([
+        "https://example.com",
+        "not-a-url",
+        "http://localhost:8741/health",
+        "ftp://example.com/file.txt",
+      ]),
+    ).toEqual(["not-a-url", "ftp://example.com/file.txt"]);
   });
 });
 

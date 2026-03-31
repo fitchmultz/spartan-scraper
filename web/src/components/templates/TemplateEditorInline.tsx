@@ -7,7 +7,7 @@
  */
 
 import type { SelectorRule } from "../../api";
-import type { TemplateDraftState } from "./templateEditorUtils";
+import type { TemplateDraftState } from "./templateRouteControllerShared";
 
 interface TemplateEditorInlineProps {
   draft: TemplateDraftState;

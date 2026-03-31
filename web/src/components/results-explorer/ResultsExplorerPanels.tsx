@@ -656,6 +656,7 @@ export function ResultsAssistantRail({
 }: ResultsAssistantRailProps) {
   return (
     <ResultsAssistantSection
+      key={`${jobId}:${selectedResultIndex}`}
       jobId={jobId}
       jobType={jobType}
       resultFormat={resultFormat}

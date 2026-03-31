@@ -1,7 +1,7 @@
 /**
- * Purpose: Verify template workspace draft codecs and payload validation stay aligned with the shared optional JSON helpers.
+ * Purpose: Verify template workspace draft codecs and payload validation stay aligned with the split route helpers.
  * Responsibilities: Cover draft formatting, snapshot normalization, and save-payload validation for template JSON blocks.
- * Scope: `templateEditorUtils.ts` helper behavior only.
+ * Scope: Template workspace helper behavior only.
  * Usage: Run with Vitest as part of the web test suite.
  */
 
@@ -10,11 +10,11 @@ import { describe, expect, it } from "vitest";
 import type { SelectorRule, Template } from "../../api";
 import {
   buildDraftFromTemplate,
-  buildTemplatePayload,
   buildTemplateSnapshot,
   type SelectorDraft,
   type TemplateDraftState,
-} from "./templateEditorUtils";
+} from "./templateRouteControllerShared";
+import { buildTemplatePayload } from "./useTemplateMutationActions";
 
 const selectorRule: SelectorRule = {
   name: " title ",
@@ -39,7 +39,7 @@ const draft: TemplateDraftState = {
   normalizeText: "",
 };
 
-describe("templateEditorUtils", () => {
+describe("templateWorkspaceHelpers", () => {
   it("formats template JSON blocks when seeding a draft", () => {
     const template: Template = {
       name: "article",

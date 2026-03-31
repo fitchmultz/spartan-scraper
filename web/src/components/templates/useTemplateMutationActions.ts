@@ -12,19 +12,137 @@ import {
   createTemplate,
   deleteTemplate,
   updateTemplate,
+  type CreateTemplateRequest,
+  type JsonldRule,
+  type NormalizeSpec,
+  type RegexRule,
   type Template,
   type TemplateDetail,
 } from "../../api";
 import { getApiBaseUrl } from "../../lib/api-config";
 import { getApiErrorMessage } from "../../lib/api-errors";
+import { parseOptionalJSON } from "../settings/settingsAuthoringForm";
 import { useToast } from "../toast";
-import {
-  buildTemplatePayload,
-  getDuplicateName,
-  type TemplateDraftState,
-} from "./templateEditorUtils";
-import type { DraftSource } from "./templateRouteControllerShared";
+import type {
+  DraftSource,
+  TemplateDraftState,
+} from "./templateRouteControllerShared";
 import type { TemplateDraftReplacementRequest } from "./templateDraftGuardrails";
+
+function getDuplicateName(name: string) {
+  return `${name}-copy`;
+}
+
+function hasRuleContent(rule: {
+  name?: string | null;
+  selector?: string | null;
+  join?: string | null;
+}) {
+  return [rule.name, rule.selector, rule.join].some(
+    (value) => (value?.trim().length ?? 0) > 0,
+  );
+}
+
+export function buildTemplatePayload(draft: TemplateDraftState): {
+  payload?: CreateTemplateRequest;
+  error?: string;
+} {
+  const trimmedName = draft.name.trim();
+  if (!trimmedName) {
+    return { error: "Template name is required." };
+  }
+
+  const selectors = draft.selectors
+    .map(({ rule }) => ({
+      ...rule,
+      name: rule.name?.trim() ?? "",
+      selector: rule.selector?.trim() ?? "",
+      attr: rule.attr?.trim() || "text",
+      join: rule.join?.trim() || undefined,
+    }))
+    .filter((rule) => hasRuleContent(rule));
+
+  if (selectors.length === 0) {
+    return { error: "Add at least one selector rule before saving." };
+  }
+
+  if (selectors.some((rule) => rule.name.length === 0)) {
+    return { error: "Each selector rule needs a field name." };
+  }
+
+  if (selectors.some((rule) => rule.selector.length === 0)) {
+    return { error: "Each selector rule needs a CSS selector." };
+  }
+
+  let jsonld: JsonldRule[] | undefined;
+  try {
+    const parsed = parseOptionalJSON<unknown>(
+      "JSON-LD rules",
+      draft.jsonldText,
+    );
+    if (parsed && !Array.isArray(parsed)) {
+      return { error: "JSON-LD rules must be a JSON array." };
+    }
+    jsonld =
+      parsed && Array.isArray(parsed) ? (parsed as JsonldRule[]) : undefined;
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "JSON-LD rules must be valid JSON.",
+    };
+  }
+
+  let regex: RegexRule[] | undefined;
+  try {
+    const parsed = parseOptionalJSON<unknown>("Regex rules", draft.regexText);
+    if (parsed && !Array.isArray(parsed)) {
+      return { error: "Regex rules must be a JSON array." };
+    }
+    regex =
+      parsed && Array.isArray(parsed) ? (parsed as RegexRule[]) : undefined;
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Regex rules must be valid JSON.",
+    };
+  }
+
+  let normalize: NormalizeSpec | undefined;
+  try {
+    const parsed = parseOptionalJSON<unknown>(
+      "Normalization settings",
+      draft.normalizeText,
+    );
+    if (parsed && (Array.isArray(parsed) || typeof parsed !== "object")) {
+      return { error: "Normalization settings must be a JSON object." };
+    }
+    normalize =
+      parsed && !Array.isArray(parsed) && typeof parsed === "object"
+        ? (parsed as NormalizeSpec)
+        : undefined;
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Normalization settings must be valid JSON.",
+    };
+  }
+
+  return {
+    payload: {
+      name: trimmedName,
+      selectors,
+      ...(jsonld ? { jsonld } : {}),
+      ...(regex ? { regex } : {}),
+      ...(normalize ? { normalize } : {}),
+    },
+  };
+}
 
 interface UseTemplateMutationActionsOptions {
   onTemplatesChanged: () => void;

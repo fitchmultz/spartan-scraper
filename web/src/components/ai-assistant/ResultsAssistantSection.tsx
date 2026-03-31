@@ -136,20 +136,9 @@ export function ResultsAssistantSection({
     [jobId, resultFormat, resultSummary, selectedResultIndex],
   );
 
-  const selectionResetKey = `${jobId}:${selectedResultIndex}`;
-
   useEffect(() => {
     setContext(assistantContext);
   }, [assistantContext, setContext]);
-
-  useEffect(() => {
-    if (!selectionResetKey) {
-      return;
-    }
-
-    setShapeState(INITIAL_SHAPE_STATE);
-    setRefineState(INITIAL_REFINE_STATE);
-  }, [selectionResetKey]);
 
   const handleGenerateShape = async () => {
     if (aiUnavailable) {

@@ -263,6 +263,20 @@ describe("JobSubmissionContainer wizard", () => {
     ).toBeInTheDocument();
   });
 
+  it("blocks advancement when the scrape URL is malformed", async () => {
+    const user = userEvent.setup();
+    renderHarness();
+
+    await user.type(screen.getAllByLabelText(/target url/i)[0], "notaurl");
+    await user.click(screen.getByRole("button", { name: /next/i }));
+
+    expect(
+      screen.getByText(
+        /target url must start with http:\/\/ or https:\/\/ and include a host/i,
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("preserves entered data when toggling into expert mode", async () => {
     const user = userEvent.setup();
     renderHarness();
@@ -373,6 +387,29 @@ describe("JobSubmissionContainer wizard", () => {
     expect(
       screen.getByRole("heading", { name: /job submission assistant/i }),
     ).toBeInTheDocument();
+  });
+
+  it("resets the assistant draft when switching job types", async () => {
+    const user = userEvent.setup();
+    setViewportHeight(780);
+    renderHarness("scrape");
+
+    await screen.findByRole("heading", { name: /job submission assistant/i });
+
+    const assistantUrl = document.getElementById("job-assistant-url");
+    expect(assistantUrl).not.toBeNull();
+
+    const assistantInput = assistantUrl as HTMLInputElement;
+    await user.type(assistantInput, "https://assistant.example");
+    expect(assistantInput).toHaveValue("https://assistant.example");
+
+    await user.click(screen.getByRole("button", { name: /^crawl/i }));
+
+    await waitFor(() => {
+      expect(
+        document.getElementById("job-assistant-url") as HTMLInputElement,
+      ).toHaveValue("");
+    });
   });
 
   it("keeps presets visible when the assistant is hidden", () => {

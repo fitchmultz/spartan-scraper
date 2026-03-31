@@ -21,7 +21,6 @@ import {
 } from "../../lib/form-utils";
 import { getApiErrorMessage } from "../../lib/api-errors";
 import { BrowserExecutionControls } from "../BrowserExecutionControls";
-import { ruleKey } from "./templateEditorUtils";
 
 interface PreviewResult {
   rule: SelectorRule;
@@ -32,6 +31,10 @@ interface TemplatePreviewPaneProps {
   template: Template;
   url: string;
   onUrlChange: (value: string) => void;
+}
+
+function ruleKey(rule: SelectorRule) {
+  return `${rule.name ?? "selector"}-${rule.selector ?? ""}-${rule.attr ?? "text"}`;
 }
 
 export function TemplatePreviewPane({

@@ -23,6 +23,11 @@ import {
   type ResearchDraftFields,
   type ScrapeDraftFields,
 } from "../../lib/job-drafts";
+import {
+  getHttpUrlValidationState,
+  getInvalidHttpUrls,
+  parseUrlList,
+} from "../../lib/form-utils";
 import type { FormController } from "../../hooks/useFormState";
 import type { JobType, PresetConfig } from "../../types/presets";
 
@@ -269,14 +274,30 @@ export function useJobWizard({ activeTab, formState }: UseJobWizardOptions) {
         return [];
       }
 
-      if (jobType === "scrape" && !config.url?.trim()) {
-        return ["A target URL is required before continuing."];
+      if (jobType === "scrape") {
+        const urlState = getHttpUrlValidationState(config.url ?? "");
+        if (urlState === "missing") {
+          return ["A target URL is required before continuing."];
+        }
+        if (urlState === "invalid") {
+          return [
+            "The target URL must start with http:// or https:// and include a host.",
+          ];
+        }
+        return [];
       }
 
       if (jobType === "crawl") {
-        return config.url?.trim()
-          ? []
-          : ["A crawl start URL is required before continuing."];
+        const urlState = getHttpUrlValidationState(config.url ?? "");
+        if (urlState === "missing") {
+          return ["A crawl start URL is required before continuing."];
+        }
+        if (urlState === "invalid") {
+          return [
+            "The crawl start URL must start with http:// or https:// and include a host.",
+          ];
+        }
+        return [];
       }
 
       if (jobType === "research") {
@@ -284,8 +305,13 @@ export function useJobWizard({ activeTab, formState }: UseJobWizardOptions) {
         if (!config.query?.trim()) {
           errors.push("A research query is required before continuing.");
         }
-        if (!config.urls?.trim()) {
+        const sourceUrls = parseUrlList(config.urls ?? "");
+        if (sourceUrls.length === 0) {
           errors.push("At least one source URL is required before continuing.");
+        } else if (getInvalidHttpUrls(sourceUrls).length > 0) {
+          errors.push(
+            "Each source URL must start with http:// or https:// and include a host.",
+          );
         }
         return errors;
       }
@@ -583,5 +609,6 @@ export function useJobWizard({ activeTab, formState }: UseJobWizardOptions) {
     applyPreset,
     clearDraft,
     reviewWarnings,
+    isInitialized,
   };
 }

@@ -22,11 +22,10 @@ import { ResumableSettingsDraftNotice } from "../settings/ResumableSettingsDraft
 import { VisualSelectorBuilder } from "../VisualSelectorBuilder";
 import { TemplateEditorInline } from "./TemplateEditorInline";
 import {
-  BUILT_IN_TEMPLATE_NAMES,
   createSelectorDraft,
-  describeTemplate,
+  isBuiltInTemplateName,
   type TemplateDraftState,
-} from "./templateEditorUtils";
+} from "./templateRouteControllerShared";
 
 interface TemplateManagerToolbarProps {
   onStartCreate: () => void;
@@ -94,6 +93,13 @@ interface TemplateAssistantControllerProps {
   onApplyTemplate: (template: Template) => void;
 }
 
+function describeTemplate(detail: TemplateDetail | null) {
+  const selectors = detail?.template?.selectors?.length ?? 0;
+  const jsonld = detail?.template?.jsonld?.length ?? 0;
+  const regex = detail?.template?.regex?.length ?? 0;
+  return `${selectors} selector${selectors === 1 ? "" : "s"} · ${jsonld} JSON-LD · ${regex} regex`;
+}
+
 export function TemplateManagerToolbar({
   onStartCreate,
   onOpenAssistant,
@@ -155,9 +161,7 @@ export function TemplateLibraryController({
         >
           {templateNames.map((name) => {
             const isSelected = name === selectedName;
-            const templateKind = BUILT_IN_TEMPLATE_NAMES.includes(
-              name as (typeof BUILT_IN_TEMPLATE_NAMES)[number],
-            )
+            const templateKind = isBuiltInTemplateName(name)
               ? "Built-in"
               : "Custom";
 

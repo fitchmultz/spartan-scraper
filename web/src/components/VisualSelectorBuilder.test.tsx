@@ -24,6 +24,14 @@ describe("VisualSelectorBuilder", () => {
     vi.clearAllMocks();
   });
 
+  it("exposes the fetch action with an accessible name", () => {
+    render(<VisualSelectorBuilder onSave={vi.fn()} onCancel={vi.fn()} />);
+
+    expect(
+      screen.getByRole("button", { name: /^fetch page$/i }),
+    ).toBeInTheDocument();
+  });
+
   it("shows formatted fetch and selector-test errors", async () => {
     vi.mocked(api.getTemplatePreview)
       .mockResolvedValueOnce({

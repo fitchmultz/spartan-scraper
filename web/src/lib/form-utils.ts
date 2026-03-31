@@ -203,8 +203,22 @@ export function isValidHttpUrl(raw: string): boolean {
   }
 }
 
+export function getHttpUrlValidationState(
+  raw: string,
+): "missing" | "invalid" | null {
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return "missing";
+  }
+  return isValidHttpUrl(trimmed) ? null : "invalid";
+}
+
 export function parseUrlList(raw: string): string[] {
   return splitAndTrim(raw, /[\n,]/);
+}
+
+export function getInvalidHttpUrls(urls: string[]): string[] {
+  return urls.filter((url) => !isValidHttpUrl(url));
 }
 
 export function buildWebhookConfig(

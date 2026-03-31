@@ -19,6 +19,7 @@ import {
   buildAIExtractOptions,
   buildCrawlRequest,
   buildSharedRequestConfig,
+  getHttpUrlValidationState,
   parsePatternList,
 } from "../lib/form-utils";
 import { buildPresetConfig, type JobDraftLocalState } from "../lib/job-drafts";
@@ -86,11 +87,21 @@ export const CrawlForm = forwardRef<CrawlFormRef, CrawlFormProps>(
     const toast = useToast();
 
     const handleSubmit = useCallback(async () => {
-      if (!url.trim()) {
+      const urlState = getHttpUrlValidationState(url);
+      if (urlState === "missing") {
         toast.show({
           tone: "warning",
           title: "Crawl URL required",
           description: "Add a root URL before launching the crawl.",
+        });
+        return;
+      }
+      if (urlState === "invalid") {
+        toast.show({
+          tone: "warning",
+          title: "Crawl URL is invalid",
+          description:
+            "Use a full http:// or https:// root URL with a host before launching the crawl.",
         });
         return;
       }

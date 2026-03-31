@@ -9,7 +9,6 @@
 import {
   useEffect,
   useMemo,
-  useRef,
   useState,
   type Dispatch,
   type SetStateAction,
@@ -127,18 +126,6 @@ function createInitialState(
   };
 }
 
-function isInitialStateBlank(state: PreviewState): boolean {
-  return (
-    !state.url &&
-    !state.html &&
-    !state.prompt &&
-    !state.fields &&
-    state.images.length === 0 &&
-    !state.result &&
-    !state.error
-  );
-}
-
 export function JobSubmissionAssistantSection({
   activeTab,
   form,
@@ -155,26 +142,10 @@ export function JobSubmissionAssistantSection({
   const [state, setState] = useState<PreviewState>(() =>
     createInitialState(assistantContext, form),
   );
-  const previousJobTypeRef = useRef(activeTab);
 
   useEffect(() => {
     setContext(assistantContext);
   }, [assistantContext, setContext]);
-
-  useEffect(() => {
-    setState((previous) => {
-      if (previousJobTypeRef.current !== activeTab) {
-        previousJobTypeRef.current = activeTab;
-        return createInitialState(assistantContext, form);
-      }
-
-      if (!isInitialStateBlank(previous)) {
-        return previous;
-      }
-
-      return createInitialState(assistantContext, form);
-    });
-  }, [activeTab, assistantContext, form]);
 
   const aiCapability = describeAICapability(
     aiStatus,

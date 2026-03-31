@@ -19,6 +19,7 @@ import {
   buildAIExtractOptions,
   buildScrapeRequest,
   buildSharedRequestConfig,
+  getHttpUrlValidationState,
 } from "../lib/form-utils";
 import { buildPresetConfig, type JobDraftLocalState } from "../lib/job-drafts";
 import type { FormController, ProfileOption } from "../hooks/useFormState";
@@ -69,11 +70,21 @@ export const ScrapeForm = forwardRef<ScrapeFormRef, ScrapeFormProps>(
     const toast = useToast();
 
     const handleSubmit = useCallback(async () => {
-      if (!url.trim()) {
+      const urlState = getHttpUrlValidationState(url);
+      if (urlState === "missing") {
         toast.show({
           tone: "warning",
           title: "Scrape URL required",
           description: "Add a target URL before launching the scrape.",
+        });
+        return;
+      }
+      if (urlState === "invalid") {
+        toast.show({
+          tone: "warning",
+          title: "Scrape URL is invalid",
+          description:
+            "Use a full http:// or https:// target URL with a host before launching the scrape.",
         });
         return;
       }

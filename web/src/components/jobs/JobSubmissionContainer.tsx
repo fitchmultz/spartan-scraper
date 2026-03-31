@@ -511,9 +511,10 @@ export const JobSubmissionContainer = forwardRef<
           <div className="job-wizard__sidebar">
             {showPresetRailInSidebar ? presetRail : null}
 
-            {showAssistantSidebar ? (
+            {showAssistantSidebar && wizard.isInitialized ? (
               <div className="job-wizard__sidebar-section job-wizard__sidebar-section--assistant">
                 <JobSubmissionAssistantSection
+                  key={activeTab}
                   activeTab={activeTab}
                   form={formState}
                   localState={wizard.localState}

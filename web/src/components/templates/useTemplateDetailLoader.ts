@@ -11,7 +11,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { getTemplate, type TemplateDetail } from "../../api";
 import { getApiBaseUrl } from "../../lib/api-config";
 import { getApiErrorMessage } from "../../lib/api-errors";
-import { BUILT_IN_TEMPLATE_NAMES } from "./templateEditorUtils";
+import { isBuiltInTemplateName } from "./templateRouteControllerShared";
 
 interface UseTemplateDetailLoaderOptions {
   templateNames: string[];
@@ -42,12 +42,7 @@ export function useTemplateDetailLoader({
 
   const selectedTemplateData = selectedTemplate?.template ?? null;
   const selectedIsBuiltIn =
-    selectedTemplate?.is_built_in ??
-    (selectedName
-      ? BUILT_IN_TEMPLATE_NAMES.includes(
-          selectedName as (typeof BUILT_IN_TEMPLATE_NAMES)[number],
-        )
-      : false);
+    selectedTemplate?.is_built_in ?? isBuiltInTemplateName(selectedName);
 
   const fetchTemplateDetail = useCallback(
     async (name: string): Promise<FetchTemplateDetailResult> => {

@@ -1,11 +1,9 @@
 /**
- * Tutorial Tooltip Component
- *
- * Provides contextual help tooltips for complex UI elements.
- * Can be triggered on hover/focus or programmatically.
- * Supports multiple positions and beacon animations.
- *
- * @module components/TutorialTooltip
+ * Purpose: Render contextual onboarding tooltips and beacons for shell-level hints without hijacking primary actions.
+ * Responsibilities: Position tooltip overlays against target elements, manage hover/focus visibility for passive hints, and expose a controlled backdrop mode for guided onboarding.
+ * Scope: Reusable tooltip and beacon primitives used by the web shell onboarding surfaces.
+ * Usage: Render `TutorialTooltip` for passive contextual help or `TutorialBeacon` to highlight a target element.
+ * Invariants/Assumptions: Tooltip positioning is viewport-clamped, uncontrolled hints should not open from pointer-originated focus events, and controlled tooltips own their own dismiss backdrop.
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -75,6 +73,7 @@ export function TutorialTooltip({
   const tooltipRef = useRef<HTMLDivElement>(null);
   const targetRef = useRef<HTMLElement | null>(null);
   const hoverTimeoutRef = useRef<number | null>(null);
+  const pointerFocusRef = useRef(false);
 
   const isControlled = controlledIsOpen !== undefined;
   const shouldShow = isControlled ? controlledIsOpen : isVisible;
@@ -183,19 +182,36 @@ export function TutorialTooltip({
       setIsVisible(false);
     };
 
-    const handleFocus = () => setIsVisible(true);
-    const handleBlur = () => setIsVisible(false);
+    const handlePointerDown = () => {
+      pointerFocusRef.current = true;
+    };
+
+    const handleFocus = () => {
+      if (pointerFocusRef.current) {
+        pointerFocusRef.current = false;
+        return;
+      }
+      setIsVisible(true);
+    };
+
+    const handleBlur = () => {
+      pointerFocusRef.current = false;
+      setIsVisible(false);
+    };
 
     element.addEventListener("mouseenter", handleMouseEnter);
     element.addEventListener("mouseleave", handleMouseLeave);
+    element.addEventListener("pointerdown", handlePointerDown, true);
     element.addEventListener("focus", handleFocus, true);
     element.addEventListener("blur", handleBlur, true);
 
     return () => {
       element.removeEventListener("mouseenter", handleMouseEnter);
       element.removeEventListener("mouseleave", handleMouseLeave);
+      element.removeEventListener("pointerdown", handlePointerDown, true);
       element.removeEventListener("focus", handleFocus, true);
       element.removeEventListener("blur", handleBlur, true);
+      pointerFocusRef.current = false;
       if (hoverTimeoutRef.current) {
         window.clearTimeout(hoverTimeoutRef.current);
       }

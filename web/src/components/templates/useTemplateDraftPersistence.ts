@@ -23,13 +23,11 @@ import { useToast } from "../toast";
 import {
   buildDraftFromTemplate,
   buildTemplateSnapshot,
+  type DraftSource,
   type TemplateDraftState,
-} from "./templateEditorUtils";
-import {
+  type TemplateWorkspaceDraftSession,
   createTemplateWorkspaceDraftSession,
   isTemplateWorkspaceDraftDirty,
-  type DraftSource,
-  type TemplateWorkspaceDraftSession,
 } from "./templateRouteControllerShared";
 import {
   resolveTemplateDraftDiscardPrompt,

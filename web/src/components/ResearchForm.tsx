@@ -19,6 +19,7 @@ import {
   buildResearchAgenticOptions,
   buildResearchRequest,
   buildSharedRequestConfig,
+  getInvalidHttpUrls,
   parseUrlList,
 } from "../lib/form-utils";
 import { buildPresetConfig, type JobDraftLocalState } from "../lib/job-drafts";
@@ -80,12 +81,22 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
     const toast = useToast();
 
     const handleSubmit = useCallback(async () => {
-      if (!query.trim() || !urls.trim()) {
+      const parsedUrls = parseUrlList(urls);
+      if (!query.trim() || parsedUrls.length === 0) {
         toast.show({
           tone: "warning",
           title: "Research query and URLs required",
           description:
             "Add both a research prompt and at least one source URL before submitting.",
+        });
+        return;
+      }
+      if (getInvalidHttpUrls(parsedUrls).length > 0) {
+        toast.show({
+          tone: "warning",
+          title: "Research source URLs are invalid",
+          description:
+            "Use full http:// or https:// source URLs with hosts before submitting research.",
         });
         return;
       }
@@ -119,7 +130,7 @@ export const ResearchForm = forwardRef<ResearchFormRef, ResearchFormProps>(
 
       const request = buildResearchRequest(
         query.trim(),
-        parseUrlList(urls),
+        parsedUrls,
         form.maxDepth,
         form.maxPages,
         form.headless,

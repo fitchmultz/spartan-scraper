@@ -334,11 +334,12 @@ function VisualSelectorPreviewPanel({
             />
           </div>
           <div className="form-group form-group--shrink">
-            <label htmlFor="fetch-button">&nbsp;</label>
+            <div aria-hidden="true">&nbsp;</div>
             <button
               id="fetch-button"
               type="button"
               className="btn btn--primary"
+              aria-label={fetching ? "Fetching page" : "Fetch Page"}
               onClick={handleFetch}
               disabled={fetching || !url}
             >
@@ -371,7 +372,11 @@ function VisualSelectorPreviewPanel({
           />
         </div>
 
-        {fetchError && <div className="form-error">{fetchError}</div>}
+        {fetchError && (
+          <div className="form-error" role="alert">
+            {fetchError}
+          </div>
+        )}
       </div>
 
       {/* Main Content */}

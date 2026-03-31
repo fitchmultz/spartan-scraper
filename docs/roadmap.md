@@ -20,3 +20,16 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 - Preserve the current top-level feature routes (`/jobs`, `/jobs/new`, `/jobs/:id`, `/templates`, `/automation`, and `/settings`), while treating `/automation/:section` and `/settings/:section` as the canonical deep-link shapes for those sectioned surfaces.
 - Treat Web UI product-grade workflow improvements as higher priority than maintenance-only work and parity-only work until the primary operator journeys feel coherent, legible, and fast.
 - No backwards-compatibility shims are required for the Web UI cutover. Prefer the cleaner immediate product model when redesign choices conflict.
+
+## Next Follow-up Work
+
+1. **Harden Jobs and Automation operator affordances before the next Web UI cutover checkpoint.**
+   - Restore a reliable operator path from `/jobs` into completed job results so the dashboard cards do not strand users on the overview.
+   - Tighten batch-form webhook validation so malformed webhook URLs identify the webhook field explicitly instead of falling back to generic URL copy.
+   - Close the known control-labeling accessibility gaps on the Jobs pager and Automation batch device-emulation selector as part of the same operator-surface pass.
+   - Add deterministic Web regression coverage for the restored interactions and treat focused dogfooding from `output/dogfood-20260330-qa3/` and `output/dogfood-20260330-qa4/` as acceptance criteria.
+
+2. **Make Settings operations feedback explicit, not silent.**
+   - Decide and ship one clear default behavior for cleanup previews with blank filters: either run a documented all-kinds preview or block with actionable validation.
+   - Ensure the Operations panel surfaces visible preview-state feedback for every operator-triggered action path instead of leaving buttons looking inert.
+   - Keep the fix scoped to `/settings/operations`, with matching regression coverage plus a follow-up mobile/desktop dogfood check from `output/dogfood-20260330-qa4/`.
