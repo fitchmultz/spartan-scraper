@@ -23,7 +23,4 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next Follow-up Work
 
-1. **Make Settings operations feedback explicit, not silent.**
-   - Decide and ship one clear default behavior for cleanup previews with blank filters: either run a documented all-kinds preview or block with actionable validation.
-   - Ensure the Operations panel surfaces visible preview-state feedback for every operator-triggered action path instead of leaving buttons looking inert.
-   - Keep the fix scoped to `/settings/operations`, with matching regression coverage plus a follow-up mobile/desktop dogfood check from `output/dogfood-20260330-qa4/`.
+- No queued follow-up items right now. Pull the next product-grade slice from fresh dogfood or spec work before extending this roadmap.

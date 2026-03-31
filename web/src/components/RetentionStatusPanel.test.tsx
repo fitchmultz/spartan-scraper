@@ -284,6 +284,94 @@ describe("RetentionStatusPanel", () => {
     });
   });
 
+  it("documents blank filters and forces dry-run previews when retention is disabled", async () => {
+    vi.mocked(api.getRetentionStatus).mockResolvedValue({
+      data: {
+        ...mockStatus,
+        enabled: false,
+        guidance: {
+          status: "disabled" as const,
+          title: "Automatic retention stays off by default",
+          message:
+            "Spartan keeps completed jobs and crawl state until you choose an automatic cleanup policy or run a manual cleanup preview. When you are ready to reclaim space, start with a dry run so you can review what would change.",
+          actions: [],
+        },
+      },
+      request: new Request("http://localhost:8741/v1/retention/status"),
+      response: new Response(),
+    });
+    vi.mocked(api.runRetentionCleanup).mockResolvedValue({
+      data: {
+        jobsDeleted: 0,
+        jobsAttempted: 0,
+        crawlStatesDeleted: 0,
+        spaceReclaimedMB: 0,
+        durationMs: 0,
+        dryRun: true,
+        failedJobIDs: [],
+        errors: [],
+      },
+      request: new Request("http://localhost:8741/v1/retention/cleanup"),
+      response: new Response(),
+    });
+
+    renderPanel();
+
+    expect(
+      await screen.findByText(
+        /leave both filters blank to preview all job kinds using the current retention policy/i,
+      ),
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getAllByRole("button", { name: /preview cleanup/i })[0],
+    );
+
+    await waitFor(() => {
+      expect(api.runRetentionCleanup).toHaveBeenCalledWith({
+        baseUrl: "http://localhost:8741",
+        body: { dryRun: true, force: true },
+      });
+    });
+
+    expect(
+      await screen.findAllByText(
+        /blank filters preview all job kinds using the current retention policy/i,
+      ),
+    ).not.toHaveLength(0);
+    expect(
+      screen.getByText(/no jobs or crawl states matched this preview/i),
+    ).toBeInTheDocument();
+  });
+
+  it("shows control-local preview feedback while a preview is running", async () => {
+    vi.mocked(api.runRetentionCleanup).mockReturnValue(
+      new Promise(() => {}) as ReturnType<typeof api.runRetentionCleanup>,
+    );
+
+    renderPanel();
+
+    await waitFor(() => {
+      expect(
+        screen.getAllByRole("button", { name: /preview cleanup/i }).length,
+      ).toBeGreaterThan(1);
+    });
+
+    const controlsPreviewButton = screen
+      .getAllByRole("button", { name: /preview cleanup/i })
+      .at(-1);
+    if (!controlsPreviewButton) {
+      throw new Error("Expected controls preview button");
+    }
+
+    fireEvent.click(controlsPreviewButton);
+
+    expect(await screen.findByText("Previewing cleanup")).toBeInTheDocument();
+    expect(
+      screen.getByText(/running a dry-run preview now/i),
+    ).toBeInTheDocument();
+  });
+
   it("shows confirmation dialog for non-dry-run cleanup", async () => {
     renderPanel();
 

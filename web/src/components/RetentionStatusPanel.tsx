@@ -56,6 +56,110 @@ interface ResolvedRetentionCapability {
   actions: RecommendedAction[];
 }
 
+interface CleanupActivity {
+  origin: "banner" | "controls";
+  dryRun: boolean;
+  kind: "" | "scrape" | "crawl" | "research";
+  olderThanDays: number | null;
+  force: boolean;
+}
+
+interface CleanupPreviewFeedbackProps {
+  activity: CleanupActivity | null;
+  loading: boolean;
+  error: string | null;
+  result: RetentionCleanupResponse | null;
+}
+
+function parseOlderThanDays(value: string): number | null {
+  const parsed = Number.parseInt(value, 10);
+  if (Number.isNaN(parsed) || parsed < 1) {
+    return null;
+  }
+  return parsed;
+}
+
+function formatCleanupScope(activity: CleanupActivity) {
+  return {
+    scopeLabel: activity.kind
+      ? `${activity.kind[0].toUpperCase()}${activity.kind.slice(1)} jobs only`
+      : "All job kinds",
+    ageLabel:
+      activity.olderThanDays !== null
+        ? `Older than ${activity.olderThanDays} day${activity.olderThanDays === 1 ? "" : "s"} for this run`
+        : "Current retention policy",
+    usesDefaultScope: activity.kind === "" && activity.olderThanDays === null,
+  };
+}
+
+function CleanupPreviewFeedback({
+  activity,
+  loading,
+  error,
+  result,
+}: CleanupPreviewFeedbackProps) {
+  if (!activity || !activity.dryRun) {
+    return null;
+  }
+
+  const scope = formatCleanupScope(activity);
+  const hasNoMatches =
+    !loading &&
+    !error &&
+    result &&
+    result.jobsDeleted === 0 &&
+    result.crawlStatesDeleted === 0;
+
+  let title = "Preview complete";
+  let tone = "info";
+  let message = "Review the scoped preview summary below before deleting data.";
+
+  if (loading) {
+    title = "Previewing cleanup";
+    message =
+      "Running a dry-run preview now. Results will appear here and in the summary below.";
+  } else if (error) {
+    title = "Preview failed";
+    tone = "warning";
+    message = error;
+  } else if (hasNoMatches) {
+    message = "No jobs or crawl states matched this preview.";
+  }
+
+  return (
+    <div
+      className={`retention-notice retention-notice--${tone} retention-preview-feedback`}
+      role="status"
+      aria-live="polite"
+    >
+      <h4 className="retention-section-title retention-notice__title">
+        {title}
+      </h4>
+      <p className="retention-notice__copy">{message}</p>
+      <div className="retention-preview-feedback__meta">
+        <span>
+          <strong>Scope:</strong> {scope.scopeLabel}
+        </span>
+        <span>
+          <strong>Age:</strong> {scope.ageLabel}
+        </span>
+        {activity.force ? (
+          <span>
+            <strong>Retention:</strong> Dry-run preview ignores the disabled
+            cleanup gate so you can see the blast radius safely.
+          </span>
+        ) : null}
+      </div>
+      {scope.usesDefaultScope ? (
+        <div className="retention-notice__detail">
+          Blank filters preview all job kinds using the current retention
+          policy.
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function StatusCard({
   label,
   value,
@@ -225,6 +329,8 @@ export function RetentionStatusPanel({
   const [error, setError] = useState<string | null>(null);
   const [cleanupResult, setCleanupResult] =
     useState<RetentionCleanupResponse | null>(null);
+  const [cleanupActivity, setCleanupActivity] =
+    useState<CleanupActivity | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [dryRun, setDryRun] = useState(true);
   const [kind, setKind] = useState<"" | "scrape" | "crawl" | "research">("");
@@ -262,20 +368,30 @@ export function RetentionStatusPanel({
   }, [refreshStatus]);
 
   const executeCleanup = useCallback(
-    async (nextDryRun: boolean) => {
+    async (
+      nextDryRun: boolean,
+      origin: CleanupActivity["origin"] = "controls",
+    ) => {
+      const olderThanDays = parseOlderThanDays(olderThan);
+      const forcePreview = nextDryRun && status?.enabled === false;
+
       setCleanupLoading(true);
       setError(null);
       setCleanupResult(null);
+      setCleanupActivity({
+        origin,
+        dryRun: nextDryRun,
+        kind,
+        olderThanDays,
+        force: forcePreview,
+      });
 
       try {
         const request = {
           dryRun: nextDryRun,
+          ...(forcePreview ? { force: true } : {}),
           ...(kind ? { kind } : {}),
-          ...(olderThan && !Number.isNaN(Number.parseInt(olderThan, 10))
-            ? {
-                olderThan: Number.parseInt(olderThan, 10),
-              }
-            : {}),
+          ...(olderThanDays !== null ? { olderThan: olderThanDays } : {}),
         };
 
         const response = await runRetentionCleanup({
@@ -298,12 +414,12 @@ export function RetentionStatusPanel({
         setShowConfirm(false);
       }
     },
-    [kind, olderThan, refreshAll],
+    [kind, olderThan, refreshAll, status?.enabled],
   );
 
   const runPreviewCleanup = useCallback(() => {
     setDryRun(true);
-    void executeCleanup(true);
+    void executeCleanup(true, "banner");
   }, [executeCleanup]);
 
   const getStorageHighlight = () => {
@@ -466,6 +582,14 @@ export function RetentionStatusPanel({
                 },
               ]}
             >
+              {cleanupActivity?.origin === "banner" ? (
+                <CleanupPreviewFeedback
+                  activity={cleanupActivity}
+                  loading={cleanupLoading}
+                  error={error}
+                  result={cleanupResult}
+                />
+              ) : null}
               <CapabilityActionList
                 actions={capability.actions}
                 onNavigate={onNavigate}
@@ -522,6 +646,17 @@ export function RetentionStatusPanel({
                   </button>
                 )}
               </div>
+
+              {cleanupActivity?.origin === "banner" &&
+              (capability.status === "warning" ||
+                capability.status === "danger") ? (
+                <CleanupPreviewFeedback
+                  activity={cleanupActivity}
+                  loading={cleanupLoading}
+                  error={error}
+                  result={cleanupResult}
+                />
+              ) : null}
 
               <CapabilityActionList
                 actions={capability.actions}
@@ -613,6 +748,23 @@ export function RetentionStatusPanel({
               </label>
             </div>
 
+            <p className="retention-controls__hint">
+              Leave both filters blank to preview all job kinds using the
+              current retention policy.
+              {!status.enabled
+                ? " Dry-run previews still run while automatic retention is off."
+                : ""}
+            </p>
+
+            {cleanupActivity?.origin === "controls" ? (
+              <CleanupPreviewFeedback
+                activity={cleanupActivity}
+                loading={cleanupLoading}
+                error={error}
+                result={cleanupResult}
+              />
+            ) : null}
+
             <div className="retention-controls__grid">
               <div>
                 <label
@@ -662,7 +814,9 @@ export function RetentionStatusPanel({
               <button
                 type="button"
                 onClick={() =>
-                  dryRun ? void executeCleanup(true) : setShowConfirm(true)
+                  dryRun
+                    ? void executeCleanup(true, "controls")
+                    : setShowConfirm(true)
                 }
                 disabled={cleanupLoading || (!status.enabled && !dryRun)}
                 className={dryRun ? "secondary" : "primary"}
@@ -702,7 +856,7 @@ export function RetentionStatusPanel({
                 <button
                   type="button"
                   onClick={() => {
-                    void executeCleanup(false);
+                    void executeCleanup(false, "controls");
                   }}
                   disabled={cleanupLoading}
                   className="retention-action-button retention-action-button--danger"
