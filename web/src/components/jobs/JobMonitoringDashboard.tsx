@@ -337,6 +337,7 @@ export function JobMonitoringDashboard({
                 type="number"
                 min="1"
                 max={maxPage}
+                aria-label="Jump to page"
                 value={jumpInputValue}
                 onChange={(event) => setJumpInputValue(event.target.value)}
               />

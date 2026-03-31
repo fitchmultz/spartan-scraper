@@ -1,7 +1,9 @@
 /**
- * Tests for form parsing functions and request builders.
- *
- * Tests form building logic for scrape, crawl, and research requests in isolation.
+ * Purpose: Verify shared Web form parsers and request builders in isolation.
+ * Responsibilities: Assert URL validation, auth/pipeline assembly, AI helper behavior, and request payload construction.
+ * Scope: Unit coverage for `lib/form-utils.ts` only.
+ * Usage: Run with Vitest as part of the Web test suite.
+ * Invariants/Assumptions: Builders collapse empty optional inputs, reject invalid configuration combinations, and preserve API request shapes expected by form components.
  */
 import { describe, it, expect } from "vitest";
 import {
@@ -12,12 +14,14 @@ import {
   buildResearchAgenticOptions,
   buildResearchRequest,
   buildScrapeRequest,
+  buildWebhookConfig,
   getHttpUrlValidationState,
   getInvalidHttpUrls,
   isValidHttpUrl,
   parseAIExtractSchemaText,
   parseProcessors,
   parseUrlList,
+  WEBHOOK_URL_INVALID_MESSAGE,
 } from "./form-utils";
 
 describe("pipeline options parsing", () => {
@@ -166,6 +170,14 @@ describe("getInvalidHttpUrls", () => {
         "ftp://example.com/file.txt",
       ]),
     ).toEqual(["not-a-url", "ftp://example.com/file.txt"]);
+  });
+});
+
+describe("buildWebhookConfig", () => {
+  it("rejects malformed optional webhook URLs with explicit field copy", () => {
+    expect(() => buildWebhookConfig("notaurl", ["completed"], "")).toThrow(
+      WEBHOOK_URL_INVALID_MESSAGE,
+    );
   });
 });
 

@@ -1,13 +1,11 @@
 /**
- * Device Selector Component
- *
- * Provides a UI for selecting device emulation presets with category filtering,
- * orientation toggle, and custom device configuration. Used by scrape, crawl,
- * and research forms to configure mobile/responsive rendering.
- *
- * @module DeviceSelector
+ * Purpose: Render the shared device-emulation picker for scrape, crawl, and batch browser workflows.
+ * Responsibilities: Expose preset/category selection, custom device authoring, and orientation toggles while keeping the primary preset control accessible.
+ * Scope: Device emulation UI only.
+ * Usage: Mount from forms that accept an optional `DeviceEmulation` config and handle changes upstream.
+ * Invariants/Assumptions: Preset keys remain stable, custom-device edits immediately project into `onChange`, and the preset combobox must expose the visible Device Emulation label to assistive tech.
  */
-import { useMemo, useState, type SVGProps } from "react";
+import { useId, useMemo, useState, type SVGProps } from "react";
 import type { DeviceEmulation, DeviceCategory, Orientation } from "../api";
 
 type DevicePreset = {
@@ -426,6 +424,7 @@ export function DeviceSelector({
   onChange,
   disabled = false,
 }: DeviceSelectorProps) {
+  const selectorTitleId = useId();
   const [category, setCategory] = useState<DeviceCategory | "all">("all");
   const [showCustom, setShowCustom] = useState(false);
 
@@ -541,7 +540,9 @@ export function DeviceSelector({
       aria-disabled={disabled}
     >
       <div className="device-selector-header">
-        <span className="device-selector-title">Device Emulation</span>
+        <span id={selectorTitleId} className="device-selector-title">
+          Device Emulation
+        </span>
         <div className="device-category-filters">
           {(["all", "mobile", "tablet", "desktop"] as const).map((cat) => {
             const Icon = CATEGORY_ICONS[cat];
@@ -572,6 +573,7 @@ export function DeviceSelector({
               ? handleCustomToggle()
               : handlePresetSelect(e.target.value)
           }
+          aria-labelledby={selectorTitleId}
           className="device-select"
         >
           <option value="">None (default viewport)</option>

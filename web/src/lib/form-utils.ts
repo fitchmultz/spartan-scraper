@@ -1,12 +1,9 @@
 /**
- * Form Utilities Module
- *
- * Shared utility functions for parsing raw form inputs (headers, cookies, query params)
- * and building structured request objects for the API. Provides type-safe builders
- * for ScrapeRequest, CrawlRequest, and ResearchRequest, along with type guards for
- * result item discrimination.
- *
- * @module form-utils
+ * Purpose: Parse shared form inputs and build typed API request payloads for the Web operator surfaces.
+ * Responsibilities: Normalize free-form auth/runtime fields, validate URL-shaped inputs, assemble scrape/crawl/research request fragments, and expose reusable result helpers.
+ * Scope: Web form parsing and request-construction helpers only.
+ * Usage: Imported by form components and hooks before submitting API requests or interpreting result payloads.
+ * Invariants/Assumptions: HTTP URL validation only accepts absolute `http://` or `https://` targets with hosts, optional fields collapse to `undefined`, and builders throw for invalid mutually exclusive configurations.
  */
 import type {
   AiExtractOptions,
@@ -221,17 +218,25 @@ export function getInvalidHttpUrls(urls: string[]): string[] {
   return urls.filter((url) => !isValidHttpUrl(url));
 }
 
+export const WEBHOOK_URL_INVALID_MESSAGE =
+  "Webhook URL must be a full http:// or https:// URL with a host.";
+
 export function buildWebhookConfig(
   url: string,
   events: string[],
   secret: string,
 ): WebhookConfig | undefined {
-  if (!url.trim()) {
+  const trimmedUrl = url.trim();
+  if (!trimmedUrl) {
     return undefined;
   }
+  if (getHttpUrlValidationState(trimmedUrl) === "invalid") {
+    throw new Error(WEBHOOK_URL_INVALID_MESSAGE);
+  }
+
   const validEvents = events.length > 0 ? events : ["completed"];
   return {
-    url: url.trim(),
+    url: trimmedUrl,
     events: validEvents as WebhookConfig["events"],
     secret: secret || undefined,
   };

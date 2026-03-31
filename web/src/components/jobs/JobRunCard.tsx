@@ -6,6 +6,8 @@
  * Invariants/Assumptions: Action availability is precomputed in the view model, and lane tone comes from the parent dashboard grouping.
  */
 
+import type { MouseEvent } from "react";
+
 import { getJobStatusBadgeClass, getJobStatusIcon } from "../../lib/job-status";
 import type { JobMonitorCardModel } from "../../lib/job-monitoring";
 import { JobFailureRail } from "./JobFailureRail";
@@ -26,6 +28,23 @@ export function JobRunCard({
   onCancel,
   onDelete,
 }: JobRunCardProps) {
+  const resultsHref = `/jobs/${encodeURIComponent(model.id)}`;
+
+  const handleViewResultsClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    onViewResults(model.id);
+  };
+
   return (
     <article className={`job-run-card job-run-card--${lane}`}>
       <header className="job-run-card__header">
@@ -88,13 +107,13 @@ export function JobRunCard({
 
       <div className="job-run-card__actions">
         {model.canViewResults ? (
-          <button
-            type="button"
-            className="secondary"
-            onClick={() => onViewResults(model.id)}
+          <a
+            href={resultsHref}
+            className="job-run-card__action-link"
+            onClick={handleViewResultsClick}
           >
             View Results
-          </button>
+          </a>
         ) : null}
 
         {model.canCancel ? (

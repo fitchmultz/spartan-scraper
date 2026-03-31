@@ -3143,6 +3143,21 @@
   flex-wrap: wrap;
 }
 
+.job-run-card__action-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--touch-target-size);
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--stroke);
+  color: var(--text);
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+}
+
 .job-run-card__delete {
   color: var(--tone-danger-text);
   border-color: var(--tone-danger-border);
@@ -3233,6 +3248,10 @@
   .job-run-card__header,
   .job-progress__meta {
     align-items: stretch;
+  }
+
+  .job-run-card__actions > :is(button, a) {
+    width: 100%;
   }
 
   .ai-assistant-panel {

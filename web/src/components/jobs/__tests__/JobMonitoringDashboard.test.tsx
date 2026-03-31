@@ -126,7 +126,34 @@ describe("JobMonitoringDashboard", () => {
       within(progressLane).getByText(/running scrape/i),
     ).toBeInTheDocument();
     expect(
-      within(completedLane).getByRole("button", { name: /view results/i }),
+      within(completedLane).getByRole("link", { name: /view results/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("labels the page jump control for assistive tech", () => {
+    render(
+      <JobMonitoringDashboard
+        jobs={[]}
+        failedJobs={[]}
+        error={null}
+        loading={false}
+        statusFilter=""
+        onStatusFilterChange={vi.fn()}
+        onViewResults={vi.fn()}
+        onCancel={vi.fn()}
+        onDelete={vi.fn()}
+        onRefresh={vi.fn()}
+        onCreateJob={vi.fn()}
+        currentPage={1}
+        totalJobs={120}
+        jobsPerPage={100}
+        onPageChange={vi.fn()}
+        connectionState="connected"
+      />,
+    );
+
+    expect(
+      screen.getByRole("spinbutton", { name: /jump to page/i }),
     ).toBeInTheDocument();
   });
 

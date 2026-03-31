@@ -73,7 +73,13 @@ describe("JobRunCard", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /view results/i }));
+    const viewResultsLink = screen.getByRole("link", {
+      name: /view results/i,
+    });
+
+    expect(viewResultsLink).toHaveAttribute("href", "/jobs/job-success");
+
+    fireEvent.click(viewResultsLink);
     fireEvent.click(screen.getByRole("button", { name: /delete/i }));
 
     expect(onViewResults).toHaveBeenCalledWith("job-success");

@@ -10,10 +10,13 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type { FormController } from "../hooks/useFormState";
+import { WEBHOOK_URL_INVALID_MESSAGE } from "../lib/form-utils";
 import { ToastProvider } from "./toast";
 import { BatchForm } from "./BatchForm";
 
-function createFormController(): FormController {
+function createFormController(
+  overrides: Partial<FormController> = {},
+): FormController {
   return {
     headless: false,
     setHeadless: vi.fn(),
@@ -123,10 +126,14 @@ function createFormController(): FormController {
     setInterceptMaxEntries: vi.fn(),
     applyPreset: vi.fn(),
     reset: vi.fn(),
+    ...overrides,
   };
 }
 
-function renderBatchForm(urlsInput = "") {
+function renderBatchForm(
+  urlsInput = "",
+  formOverrides: Partial<FormController> = {},
+) {
   const setUrlsInput = vi.fn();
 
   render(
@@ -134,7 +141,7 @@ function renderBatchForm(urlsInput = "") {
       <BatchForm
         activeTab="scrape"
         setActiveTab={vi.fn()}
-        form={createFormController()}
+        form={createFormController(formOverrides)}
         profiles={[]}
         urlsInput={urlsInput}
         setUrlsInput={setUrlsInput}
@@ -197,6 +204,19 @@ describe("BatchForm", () => {
     expect(
       screen.getByText(/Invalid URLs: ftp:\/\/example.com\/file.txt/),
     ).toBeInTheDocument();
+  });
+
+  it("uses explicit webhook field copy for malformed webhook URLs", () => {
+    renderBatchForm("https://example.com", {
+      webhookUrl: "notaurl",
+    });
+
+    const webhookInput = screen.getByRole("textbox", {
+      name: /webhook url/i,
+    }) as HTMLInputElement;
+    fireEvent.invalid(webhookInput);
+
+    expect(webhookInput.validationMessage).toBe(WEBHOOK_URL_INVALID_MESSAGE);
   });
 
   it("renders an in-context confirmation with the submitted URLs", () => {

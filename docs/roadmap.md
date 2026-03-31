@@ -23,13 +23,7 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Next Follow-up Work
 
-1. **Harden Jobs and Automation operator affordances before the next Web UI cutover checkpoint.**
-   - Restore a reliable operator path from `/jobs` into completed job results so the dashboard cards do not strand users on the overview.
-   - Tighten batch-form webhook validation so malformed webhook URLs identify the webhook field explicitly instead of falling back to generic URL copy.
-   - Close the known control-labeling accessibility gaps on the Jobs pager and Automation batch device-emulation selector as part of the same operator-surface pass.
-   - Add deterministic Web regression coverage for the restored interactions and treat focused dogfooding from `output/dogfood-20260330-qa3/` and `output/dogfood-20260330-qa4/` as acceptance criteria.
-
-2. **Make Settings operations feedback explicit, not silent.**
+1. **Make Settings operations feedback explicit, not silent.**
    - Decide and ship one clear default behavior for cleanup previews with blank filters: either run a documented all-kinds preview or block with actionable validation.
    - Ensure the Operations panel surfaces visible preview-state feedback for every operator-triggered action path instead of leaving buttons looking inert.
    - Keep the fix scoped to `/settings/operations`, with matching regression coverage plus a follow-up mobile/desktop dogfood check from `output/dogfood-20260330-qa4/`.
