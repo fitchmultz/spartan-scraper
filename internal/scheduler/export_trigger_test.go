@@ -114,7 +114,7 @@ func TestExportTriggerRejectsLocalDestinationOutsideExportsRoot(t *testing.T) {
 	}
 
 	err := trigger.Export(context.Background(), &job, schedule)
-	if err == nil || !strings.Contains(err.Error(), "automated export destination must stay within") {
+	if err == nil || !strings.Contains(err.Error(), "DATA_DIR/exports") {
 		t.Fatalf("expected exports-root validation error, got %v", err)
 	}
 	records, total, err := history.GetBySchedule(schedule.ID, 10, 0)

@@ -141,6 +141,30 @@ describe("useExportScheduleForm", () => {
     expect(result.current.formError).toBe("Webhook URL must be a valid URL");
   });
 
+  it("rejects local destinations outside DATA_DIR/exports", async () => {
+    const { result } = renderHook(() => useExportScheduleForm());
+
+    act(() => {
+      result.current.setFormField("name", "Outside root");
+      result.current.setFormField("destinationType", "local");
+      result.current.setFormField("localPath", "/tmp/out.json");
+      result.current.setFormField("pathTemplate", "/tmp/out.json");
+    });
+
+    const onCreate = vi.fn().mockResolvedValue(undefined);
+    const onUpdate = vi.fn().mockResolvedValue(undefined);
+
+    let success = false;
+    await act(async () => {
+      success = await result.current.submitForm(onCreate, onUpdate);
+    });
+
+    expect(success).toBe(false);
+    expect(result.current.formError).toBe(
+      "Local destination must stay within DATA_DIR/exports",
+    );
+  });
+
   it("rejects schedules that combine transform and shape", async () => {
     const { result } = renderHook(() => useExportScheduleForm());
 

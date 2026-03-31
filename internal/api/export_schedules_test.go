@@ -197,7 +197,7 @@ func TestExportScheduleHistoryRejectsInvalidPagination(t *testing.T) {
 		"export": {
 			"format": "json",
 			"destination_type": "local",
-			"local_path": "/tmp/exports.json"
+			"local_path": "exports/history.json"
 		}
 	}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/export-schedules", strings.NewReader(body))
@@ -246,6 +246,34 @@ func TestExportScheduleCreateRejectsInvalidWebhookURL(t *testing.T) {
 	}
 	if !strings.Contains(res.Body.String(), "webhook URL must use http or https scheme") {
 		t.Fatalf("expected webhook URL validation error, got %s", res.Body.String())
+	}
+}
+
+func TestExportScheduleCreateRejectsLocalDestinationOutsideExportsRoot(t *testing.T) {
+	srv, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	body := `{
+		"name": "invalid local export",
+		"filters": {"job_kinds": ["scrape"]},
+		"export": {
+			"format": "json",
+			"destination_type": "local",
+			"local_path": "/tmp/out.json",
+			"path_template": "/tmp/out.json"
+		}
+	}`
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/export-schedules", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	res := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(res, req)
+
+	if res.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d: %s", res.Code, res.Body.String())
+	}
+	if !strings.Contains(res.Body.String(), "DATA_DIR/exports") {
+		t.Fatalf("expected DATA_DIR/exports validation error, got %s", res.Body.String())
 	}
 }
 

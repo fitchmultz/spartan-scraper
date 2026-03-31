@@ -34,6 +34,9 @@ const SHAPE_SUPPORTED_FORMATS = new Set<ExportScheduleFormData["format"]>([
   "xlsx",
 ]);
 
+const LOCAL_EXPORT_POLICY_ERROR =
+  "Local destination must stay within DATA_DIR/exports";
+
 /**
  * Default form data for creating a new export schedule
  */
@@ -135,6 +138,41 @@ export function supportsExportShapeFormat(
 
 export function hasTransformFormData(data: ExportScheduleFormData): boolean {
   return Boolean(data.transformExpression.trim());
+}
+
+export function validateLocalExportDestinationPath(
+  input: string,
+): string | null {
+  const trimmed = input.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const normalized = trimmed.replaceAll("\\", "/");
+  if (normalized.startsWith("/") || /^[A-Za-z]:\//.test(normalized)) {
+    return LOCAL_EXPORT_POLICY_ERROR;
+  }
+
+  const segments: string[] = [];
+  for (const part of normalized.split("/")) {
+    if (!part || part === ".") {
+      continue;
+    }
+    if (part === "..") {
+      if (segments.length === 0) {
+        return LOCAL_EXPORT_POLICY_ERROR;
+      }
+      segments.pop();
+      continue;
+    }
+    segments.push(part);
+  }
+
+  if (segments.length === 0 || segments[0] !== "exports") {
+    return LOCAL_EXPORT_POLICY_ERROR;
+  }
+
+  return null;
 }
 
 export function transformConfigToFormData(

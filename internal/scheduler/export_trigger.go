@@ -422,25 +422,10 @@ func (et *ExportTrigger) destinationForSchedule(job *model.Job, schedule *Export
 			pathTemplate = schedule.Export.LocalPath
 		}
 		if pathTemplate == "" {
-			pathTemplate = "exports/{kind}/{job_id}.{format}"
+			pathTemplate = defaultLocalExportPathTemplate
 		}
 		outputPath := exporter.RenderPathTemplate(pathTemplate, *job, schedule.Export.Format)
-		resolvedPath, err := fsutil.ResolvePathWithinRoot(et.dataDir, outputPath)
-		if err != nil {
-			return "", err
-		}
-		exportsRoot, err := fsutil.ResolvePathWithinRoot(et.dataDir, "exports")
-		if err != nil {
-			return "", apperrors.Wrap(apperrors.KindInternal, "failed to resolve automated export root", err)
-		}
-		rel, err := filepath.Rel(exportsRoot, resolvedPath)
-		if err != nil {
-			return "", apperrors.Wrap(apperrors.KindInternal, "failed to validate automated export destination", err)
-		}
-		if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-			return "", apperrors.Permission(fmt.Sprintf("automated export destination must stay within %s", exportsRoot))
-		}
-		return resolvedPath, nil
+		return resolveAutomatedLocalExportDestination(et.dataDir, outputPath)
 	}
 }
 

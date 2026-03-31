@@ -25,5 +25,4 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 Audit snapshot: 156 non-test code files exceed 300 lines, the current Go/TS heuristics found roughly 393 functions over 50 LOC, and 62 tracked code files still miss the required top-of-file purpose header.
 
-- **Reject invalid export-schedule local destinations at authoring time across API/Web/CLI/MCP.** Push the new `DATA_DIR/exports` local-destination policy into schedule validation and operator guidance so invalid paths fail on create/update instead of waiting for the first triggered export.
 - **Finish the remaining audit cleanup outside the operator-orchestration cutover.** Migrate the last direct frontend `console.error` call sites that still sit outside the shared runtime reporter (for example `useResultsState` and webhook clipboard helpers), then finish the missing purpose headers on the remaining tracked code files.

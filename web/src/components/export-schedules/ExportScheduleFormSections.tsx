@@ -398,6 +398,9 @@ export function ExportScheduleConfigSection({
               placeholder="exports/{kind}/{job_id}.{format}"
               style={{ width: "100%" }}
             />
+            <small style={{ color: "var(--muted)" }}>
+              Saved schedules can only write within DATA_DIR/exports.
+            </small>
           </div>
         </div>
       ) : null}

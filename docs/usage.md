@@ -650,6 +650,7 @@ spartan export-schedule add \
 ```
 
 Local destinations default to `exports/{kind}/{job_id}.{format}` when you do not pass `--local-path`.
+Recurring export schedules reject absolute paths and any destination outside `DATA_DIR/exports` at save time across API, Web, CLI, and MCP.
 
 Recurring exports can persist either:
 

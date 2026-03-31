@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"strings"
 	"testing"
 
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/scheduler"
 )
 
@@ -183,5 +185,39 @@ func TestHandleExportScheduleLifecycle(t *testing.T) {
 	}
 	if _, err := srv.handleToolCall(ctx, deleteBase); err != nil {
 		t.Fatalf("export_schedule_delete failed: %v", err)
+	}
+}
+
+func TestHandleExportScheduleCreateRejectsInvalidLocalDestination(t *testing.T) {
+	srv, tmpDir := testServer()
+	defer os.RemoveAll(tmpDir)
+	defer srv.Close()
+
+	ctx := context.Background()
+	_, err := srv.handleToolCall(ctx, map[string]json.RawMessage{
+		"params": mustMarshalJSON(map[string]interface{}{
+			"name": "export_schedule_create",
+			"arguments": map[string]interface{}{
+				"name": "Outside Root",
+				"filters": map[string]interface{}{
+					"job_kinds": []string{"scrape"},
+				},
+				"export": map[string]interface{}{
+					"format":           "json",
+					"destination_type": "local",
+					"local_path":       "/tmp/out.json",
+					"path_template":    "/tmp/out.json",
+				},
+			},
+		}),
+	})
+	if err == nil {
+		t.Fatal("export_schedule_create error = nil, want validation error")
+	}
+	if !apperrors.IsKind(err, apperrors.KindValidation) {
+		t.Fatalf("export_schedule_create error kind = %v, want %v", apperrors.KindOf(err), apperrors.KindValidation)
+	}
+	if !strings.Contains(apperrors.SafeMessage(err), "DATA_DIR/exports") {
+		t.Fatalf("export_schedule_create error = %q, want DATA_DIR/exports policy", apperrors.SafeMessage(err))
 	}
 }

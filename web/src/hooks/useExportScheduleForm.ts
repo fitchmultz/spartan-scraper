@@ -21,6 +21,7 @@ import {
   formDataToScheduleRequest,
   hasShapeFormData,
   hasTransformFormData,
+  validateLocalExportDestinationPath,
 } from "../lib/export-schedule-utils";
 
 interface UseExportScheduleFormReturn {
@@ -99,6 +100,25 @@ export function useExportScheduleForm(): UseExportScheduleFormReturn {
     if (formData.destinationType === "local" && !formData.localPath.trim()) {
       setFormError("Local path is required for local destination");
       return false;
+    }
+
+    if (formData.destinationType === "local") {
+      const localPathError = validateLocalExportDestinationPath(
+        formData.localPath,
+      );
+      if (localPathError) {
+        setFormError(localPathError);
+        return false;
+      }
+      if (formData.pathTemplate.trim()) {
+        const pathTemplateError = validateLocalExportDestinationPath(
+          formData.pathTemplate,
+        );
+        if (pathTemplateError) {
+          setFormError(pathTemplateError);
+          return false;
+        }
+      }
     }
 
     if (formData.destinationType === "webhook" && !formData.webhookUrl.trim()) {

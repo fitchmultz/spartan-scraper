@@ -4,8 +4,10 @@ package scheduler
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/exporter"
 )
 
@@ -34,7 +36,7 @@ func TestExportStorage(t *testing.T) {
 			Export: ExportConfig{
 				Format:          "jsonl",
 				DestinationType: "local",
-				LocalPath:       "/tmp/exports/{job_id}.jsonl",
+				LocalPath:       "exports/{job_id}.jsonl",
 			},
 		}
 
@@ -79,7 +81,7 @@ func TestExportStorage(t *testing.T) {
 			Export: ExportConfig{
 				Format:          "json",
 				DestinationType: "local",
-				LocalPath:       "/tmp/test.json",
+				LocalPath:       "exports/test.json",
 			},
 		}
 
@@ -121,7 +123,7 @@ func TestExportStorage(t *testing.T) {
 			ID:      "non-existent",
 			Name:    "Test",
 			Filters: ExportFilters{JobKinds: []string{"crawl"}},
-			Export:  ExportConfig{Format: "jsonl", DestinationType: "local", LocalPath: "/tmp/test.jsonl"},
+			Export:  ExportConfig{Format: "jsonl", DestinationType: "local", LocalPath: "exports/test.jsonl"},
 		}
 
 		_, err := storage.Update(schedule)
@@ -140,7 +142,7 @@ func TestExportStorage(t *testing.T) {
 			Export: ExportConfig{
 				Format:          "json",
 				DestinationType: "local",
-				LocalPath:       "/tmp/test.json",
+				LocalPath:       "exports/test.json",
 			},
 		}
 
@@ -187,7 +189,7 @@ func TestExportStorage(t *testing.T) {
 				Export: ExportConfig{
 					Format:          "jsonl",
 					DestinationType: "local",
-					LocalPath:       "/tmp/test.jsonl",
+					LocalPath:       "exports/test.jsonl",
 				},
 			}
 			_, err := storage.Add(schedule)
@@ -220,7 +222,7 @@ func TestExportStorage_AddDefaults(t *testing.T) {
 		Export: ExportConfig{
 			Format:          "jsonl",
 			DestinationType: "local",
-			LocalPath:       "/tmp/test.jsonl",
+			LocalPath:       "exports/test.jsonl",
 		},
 		// Retry is zero value
 	}
@@ -253,7 +255,7 @@ func TestExportStorage_InvalidSchedule(t *testing.T) {
 		Export: ExportConfig{
 			Format:          "jsonl",
 			DestinationType: "local",
-			LocalPath:       "/tmp/test.jsonl",
+			LocalPath:       "exports/test.jsonl",
 		},
 	}
 
@@ -335,5 +337,38 @@ func TestExportStorage_TransformRoundTripAndDefaultLocalPath(t *testing.T) {
 	}
 	if retrieved.Export.Transform.Language != "jmespath" {
 		t.Fatalf("Transform language = %q", retrieved.Export.Transform.Language)
+	}
+}
+
+func TestExportStorage_RejectsLocalDestinationsOutsideExportsRoot(t *testing.T) {
+	tempDir := t.TempDir()
+	storage := NewExportStorage(tempDir)
+
+	_, err := storage.Add(ExportSchedule{
+		Name:    "Outside Root",
+		Enabled: true,
+		Filters: ExportFilters{JobKinds: []string{"scrape"}},
+		Export: ExportConfig{
+			Format:          "json",
+			DestinationType: "local",
+			LocalPath:       "/tmp/out.json",
+			PathTemplate:    "/tmp/out.json",
+		},
+	})
+	if err == nil {
+		t.Fatal("Add() error = nil, want validation error")
+	}
+	if !apperrors.IsKind(err, apperrors.KindValidation) {
+		t.Fatalf("Add() error kind = %v, want %v", apperrors.KindOf(err), apperrors.KindValidation)
+	}
+	if !strings.Contains(apperrors.SafeMessage(err), "DATA_DIR/exports") {
+		t.Fatalf("Add() error = %q, want DATA_DIR/exports policy", apperrors.SafeMessage(err))
+	}
+	items, loadErr := storage.List()
+	if loadErr != nil {
+		t.Fatalf("List() error = %v", loadErr)
+	}
+	if len(items) != 0 {
+		t.Fatalf("List() count = %d, want 0", len(items))
 	}
 }

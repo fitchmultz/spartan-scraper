@@ -457,11 +457,22 @@ func TestHandleJobCancelNotDelete(t *testing.T) {
 		t.Errorf("expected status 'canceled', got %v", resp.Job.Status)
 	}
 
-	gotJob, err := st.Get(ctx, jobID)
-	if err != nil {
-		t.Error("job should still exist in database after cancel")
+	var (
+		gotJob model.Job
+		getErr error
+	)
+	for range 20 {
+		gotJob, getErr = st.Get(ctx, jobID)
+		if getErr != nil {
+			t.Error("job should still exist in database after cancel")
+			break
+		}
+		if gotJob.Status == model.StatusCanceled {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
-	if gotJob.Status != model.StatusCanceled {
+	if getErr == nil && gotJob.Status != model.StatusCanceled {
 		t.Errorf("job status should be 'canceled', got %s", gotJob.Status)
 	}
 

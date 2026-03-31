@@ -117,7 +117,7 @@ func (s *ExportStorage) Add(schedule ExportSchedule) (*ExportSchedule, error) {
 		schedule.Retry = DefaultRetryConfig()
 	}
 
-	if err := ValidateExportSchedule(schedule); err != nil {
+	if err := validateStoredExportSchedule(s.dataDir, schedule); err != nil {
 		return nil, err
 	}
 
@@ -137,7 +137,7 @@ func (s *ExportStorage) Update(schedule ExportSchedule) (*ExportSchedule, error)
 	schedule = NormalizeExportSchedule(schedule)
 	schedule.UpdatedAt = time.Now()
 
-	if err := ValidateExportSchedule(schedule); err != nil {
+	if err := validateStoredExportSchedule(s.dataDir, schedule); err != nil {
 		return nil, err
 	}
 

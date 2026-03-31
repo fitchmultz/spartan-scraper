@@ -94,7 +94,7 @@ func addExportSchedule(cfg config.Config, args []string) int {
 	filterHasResults := fs.Bool("filter-has-results", false, "Only export jobs with non-empty results")
 	format := fs.String("format", "", "Export format: json,jsonl,md,csv,xlsx (required)")
 	destination := fs.String("destination", "", "Destination type: local,webhook (required)")
-	localPath := fs.String("local-path", "", "Local file path template (defaults to exports/{kind}/{job_id}.{format})")
+	localPath := fs.String("local-path", "", "Local file path template within DATA_DIR/exports (defaults to exports/{kind}/{job_id}.{format})")
 	webhookURL := fs.String("webhook-url", "", "Webhook URL (for webhook destination)")
 	transformExpression := fs.String("transform-expression", "", "Optional JMESPath/JSONata expression to transform results before export")
 	transformLanguage := fs.String("transform-language", "", "Transformation language for --transform-expression: jmespath|jsonata")
