@@ -909,7 +909,7 @@
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 1360px) {
   .app-shell__topbar {
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:

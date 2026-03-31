@@ -510,7 +510,10 @@
 .template-manager__library,
 .template-manager__editor-surface,
 .template-manager__rail {
-  min-height: 620px;
+  min-height: min(620px, calc(100vh - 220px));
+  max-height: calc(100vh - 220px);
+  overflow: auto;
+  scrollbar-gutter: stable;
   padding: 20px;
 }
 
