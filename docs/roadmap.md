@@ -25,14 +25,6 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 Audit snapshot: 156 non-test code files exceed 300 lines, and the current Go/TS heuristics found roughly 393 functions over 50 LOC.
 
-### Cleanup Batch 3 — Backend orchestration file split
-
-Why: Large backend coordinator files concentrate validation, transport, and workflow logic in the same place, which raises regression risk when AI, API, or research flows change.
-
-- Break up oversized backend orchestration files along real responsibility boundaries such as request shaping, provider transport, workflow planning, and response normalization.
-- Start with the highest-signal runtime hotspots from the audit sample, including `internal/aiauthoring/automation.go`, `internal/ai/client.go`, `internal/research/agentic.go`, and `internal/api/ai_extract.go`.
-- Preserve existing contracts and move logic into smaller package-local modules before considering deeper API or model changes.
-
 ### Cleanup Batch 4 — Large test surface trimming and fixture reuse
 
 Why: Some of the biggest files in the repo are scenario-heavy tests, and trimming them will make failures easier to localize without weakening coverage.
