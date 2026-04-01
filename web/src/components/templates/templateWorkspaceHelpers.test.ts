@@ -17,6 +17,7 @@ import {
 import {
   buildTemplatePayload,
   getTemplateDraftValidationError,
+  getTemplateDraftValidationIssues,
 } from "./useTemplateMutationActions";
 
 const selectorRule: SelectorRule = {
@@ -144,7 +145,7 @@ describe("templateWorkspaceHelpers", () => {
 
   it("surfaces live validation reasons before save for blank promoted drafts", () => {
     expect(
-      getTemplateDraftValidationError({
+      getTemplateDraftValidationIssues({
         ...draft,
         selectors: [
           {
@@ -160,7 +161,10 @@ describe("templateWorkspaceHelpers", () => {
           },
         ],
       }),
-    ).toBe("Add at least one selector rule before saving.");
+    ).toEqual([
+      "Name the first selector rule.",
+      "Add a CSS selector for the first selector rule.",
+    ]);
 
     expect(
       getTemplateDraftValidationError({
@@ -179,6 +183,6 @@ describe("templateWorkspaceHelpers", () => {
           },
         ],
       }),
-    ).toBe("Each selector rule needs a field name.");
+    ).toBe("Add a field name for selector rule 1.");
   });
 });

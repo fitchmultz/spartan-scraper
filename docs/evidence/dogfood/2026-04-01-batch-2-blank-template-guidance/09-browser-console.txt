@@ -1,0 +1,4 @@
+[debug] [vite] connecting...
+[36m[info][0m %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[debug] [vite] connected.
+[36m[info][0m %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold

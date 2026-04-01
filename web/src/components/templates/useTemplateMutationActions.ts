@@ -55,29 +55,50 @@ function normalizeSelectorRules(draft: TemplateDraftState) {
     .filter((rule) => hasRuleContent(rule));
 }
 
+export function getTemplateDraftValidationIssues(
+  draft: TemplateDraftState,
+): string[] {
+  const issues: string[] = [];
+  const trimmedName = draft.name.trim();
+
+  if (!trimmedName) {
+    issues.push("Enter a template name.");
+  }
+
+  const selectorDrafts = draft.selectors.map(({ rule }) => ({
+    ...rule,
+    name: rule.name?.trim() ?? "",
+    selector: rule.selector?.trim() ?? "",
+  }));
+  const populatedSelectors = selectorDrafts.filter((rule) =>
+    hasRuleContent(rule),
+  );
+
+  if (populatedSelectors.length === 0) {
+    issues.push("Name the first selector rule.");
+    issues.push("Add a CSS selector for the first selector rule.");
+    return issues;
+  }
+
+  populatedSelectors.forEach((rule, index) => {
+    const rowLabel = `selector rule ${index + 1}`;
+
+    if (rule.name.length === 0) {
+      issues.push(`Add a field name for ${rowLabel}.`);
+    }
+
+    if (rule.selector.length === 0) {
+      issues.push(`Add a CSS selector for ${rowLabel}.`);
+    }
+  });
+
+  return issues;
+}
+
 export function getTemplateDraftValidationError(
   draft: TemplateDraftState,
 ): string | null {
-  const trimmedName = draft.name.trim();
-  if (!trimmedName) {
-    return "Template name is required.";
-  }
-
-  const selectors = normalizeSelectorRules(draft);
-
-  if (selectors.length === 0) {
-    return "Add at least one selector rule before saving.";
-  }
-
-  if (selectors.some((rule) => rule.name.length === 0)) {
-    return "Each selector rule needs a field name.";
-  }
-
-  if (selectors.some((rule) => rule.selector.length === 0)) {
-    return "Each selector rule needs a CSS selector.";
-  }
-
-  return null;
+  return getTemplateDraftValidationIssues(draft)[0] ?? null;
 }
 
 export function buildTemplatePayload(draft: TemplateDraftState): {

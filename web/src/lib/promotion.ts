@@ -261,8 +261,8 @@ export function buildTemplatePromotionSeed(job: Job): TemplatePromotionSeed {
       "Source-job lineage so the workspace still shows where this draft came from.",
     ],
     remainingDecisions: [
-      "Define the reusable selector or structured extraction rules you actually want to save.",
-      "Review the blank draft before saving so runtime-only extraction logic is not mistaken for a reusable template.",
+      "Add at least one reusable selector rule with both a field name and CSS selector before save unlocks.",
+      "Use a starter or the visual builder, then preview the draft against the verified page before saving.",
     ],
     unsupportedCarryForward: [
       "This job did not include reusable template rules, so Spartan starts a guided blank draft instead of inventing a fake conversion.",

@@ -7,7 +7,7 @@
  */
 
 import type { SelectorRule } from "../../api";
-import { getTemplateDraftValidationError } from "./useTemplateMutationActions";
+import { getTemplateDraftValidationIssues } from "./useTemplateMutationActions";
 import type { TemplateDraftState } from "./templateRouteControllerShared";
 
 interface TemplateEditorInlineProps {
@@ -57,9 +57,10 @@ export function TemplateEditorInline({
   closeLabel = "Close",
   discardLabel = "Discard draft",
 }: TemplateEditorInlineProps) {
-  const saveDisabledReason = readOnly
-    ? null
-    : getTemplateDraftValidationError(draft);
+  const saveDisabledIssues = readOnly
+    ? []
+    : getTemplateDraftValidationIssues(draft);
+  const saveDisabledReason = saveDisabledIssues[0] ?? null;
 
   return (
     <div className="template-editor-inline">
@@ -344,8 +345,15 @@ export function TemplateEditorInline({
               template to make changes.
             </span>
           ) : null}
-          {!readOnly && saveDisabledReason ? (
-            <span>{saveDisabledReason}</span>
+          {!readOnly && saveDisabledIssues.length > 0 ? (
+            <div className="template-editor-inline__status-blockers">
+              <strong>Save stays disabled until you finish:</strong>
+              <ul>
+                {saveDisabledIssues.map((issue) => (
+                  <li key={issue}>{issue}</li>
+                ))}
+              </ul>
+            </div>
           ) : null}
           {notice ? <span>{notice}</span> : null}
           {error ? <span className="form-error">{error}</span> : null}
@@ -357,7 +365,7 @@ export function TemplateEditorInline({
           {readOnly
             ? "Preview or debug this template, then duplicate it into the workspace when you are ready to edit."
             : saveDisabledReason
-              ? saveDisabledReason
+              ? "Complete the save blockers above, then preview or save the reusable draft."
               : isDirty
                 ? "Unsaved changes stay in the workspace until you explicitly save them."
                 : "Your workspace is up to date."}

@@ -65,6 +65,7 @@ interface TemplateWorkspaceControllerProps {
   onStartDuplicate: () => void;
   onDelete: () => void;
   onOpenSourceJob?: (jobId: string) => void;
+  onOpenVisualBuilder: () => void;
   onClearPromotionSeed?: () => void;
   onResumeDraft: () => void;
   onDiscardDraft: () => void;
@@ -98,6 +99,62 @@ function describeTemplate(detail: TemplateDetail | null) {
   const jsonld = detail?.template?.jsonld?.length ?? 0;
   const regex = detail?.template?.regex?.length ?? 0;
   return `${selectors} selector${selectors === 1 ? "" : "s"} · ${jsonld} JSON-LD · ${regex} regex`;
+}
+
+interface GuidedBlankTemplateStarter {
+  label: string;
+  fieldName: string;
+  selector: string;
+  description: string;
+}
+
+const GUIDED_BLANK_TEMPLATE_STARTERS: GuidedBlankTemplateStarter[] = [
+  {
+    label: "Use title starter",
+    fieldName: "title",
+    selector: "h1",
+    description:
+      "Capture the primary page heading with a reusable title field.",
+  },
+  {
+    label: "Use main content starter",
+    fieldName: "body",
+    selector: "main",
+    description:
+      "Capture the primary page body from the main content container.",
+  },
+];
+
+function applyGuidedBlankStarter(
+  draft: TemplateDraftState,
+  starter: GuidedBlankTemplateStarter,
+): TemplateDraftState {
+  const nextSelectors = [...draft.selectors];
+  const targetIndex = nextSelectors.findIndex(({ rule }) => {
+    const hasName = (rule.name?.trim().length ?? 0) > 0;
+    const hasSelector = (rule.selector?.trim().length ?? 0) > 0;
+    return !hasName || !hasSelector;
+  });
+  const resolvedIndex = targetIndex >= 0 ? targetIndex : nextSelectors.length;
+  const current = nextSelectors[resolvedIndex] ?? createSelectorDraft();
+
+  nextSelectors[resolvedIndex] = {
+    ...current,
+    rule: {
+      ...current.rule,
+      name: current.rule.name?.trim() ? current.rule.name : starter.fieldName,
+      selector: current.rule.selector?.trim()
+        ? current.rule.selector
+        : starter.selector,
+      attr: current.rule.attr?.trim() || "text",
+      trim: current.rule.trim ?? true,
+    },
+  };
+
+  return {
+    ...draft,
+    selectors: nextSelectors,
+  };
 }
 
 export function TemplateManagerToolbar({
@@ -218,6 +275,7 @@ export function TemplateWorkspaceController({
   onStartDuplicate,
   onDelete,
   onOpenSourceJob,
+  onOpenVisualBuilder,
   onClearPromotionSeed,
   onResumeDraft,
   onDiscardDraft,
@@ -229,6 +287,13 @@ export function TemplateWorkspaceController({
   onBuilderSave,
   onBuilderCancel,
 }: TemplateWorkspaceControllerProps) {
+  const promotionDescription =
+    promotionSeed?.mode === "guided-blank"
+      ? "This source job proved the page is worth templating, but it did not include reusable selector rules. Spartan keeps the verified page context, suggested name, and save guardrails while you author the first reusable rule explicitly."
+      : "This workspace starts from the reusable extraction structure Spartan could safely recover from the successful source job.";
+  const showGuidedBlankHelper =
+    promotionSeed?.mode === "guided-blank" && !readOnly && !hiddenDraft;
+
   if (isBuilderOpen) {
     return (
       <section className="template-manager__builder-surface">
@@ -297,11 +362,60 @@ export function TemplateWorkspaceController({
       {promotionSeed ? (
         <PromotionDraftNotice
           title="Template draft seeded from a verified job"
-          description="This workspace starts from the reusable extraction structure Spartan could safely recover from the successful source job."
+          description={promotionDescription}
           seed={promotionSeed}
           onOpenSourceJob={onOpenSourceJob}
           onClear={onClearPromotionSeed}
         />
+      ) : null}
+
+      {showGuidedBlankHelper ? (
+        <section className="template-editor-inline__section template-editor-inline__guided-blank">
+          <div className="template-editor-inline__section-header">
+            <div>
+              <h4>Start the first reusable rule</h4>
+              <p>
+                Blank promotions keep the verified page and suggested template
+                name, but Spartan never invents reusable selectors for you. Use
+                a starter below or open the visual builder, then preview the
+                result before saving.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn btn--secondary btn--small"
+              onClick={onOpenVisualBuilder}
+            >
+              Open Visual Builder
+            </button>
+          </div>
+
+          <div className="template-editor-inline__starter-grid">
+            {GUIDED_BLANK_TEMPLATE_STARTERS.map((starter) => (
+              <button
+                key={starter.label}
+                type="button"
+                className="template-editor-inline__starter-card"
+                onClick={() =>
+                  onUpdateDraft((current) =>
+                    applyGuidedBlankStarter(current, starter),
+                  )
+                }
+                disabled={isSaving}
+              >
+                <strong>{starter.label}</strong>
+                <span>{starter.description}</span>
+                <code>{starter.fieldName}</code>
+                <code>{starter.selector}</code>
+              </button>
+            ))}
+          </div>
+
+          <p className="template-editor-inline__starter-note">
+            Starters fill the first incomplete rule so save can unlock without
+            rebuilding the draft from scratch.
+          </p>
+        </section>
       ) : null}
 
       {hiddenDraft ? (

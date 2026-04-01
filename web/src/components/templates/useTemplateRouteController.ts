@@ -140,6 +140,7 @@ export function useTemplateRouteController({
         onDelete: () => {
           void draftSession.handleDelete();
         },
+        onOpenVisualBuilder: () => draftSession.setIsBuilderOpen(true),
         onClearPromotionSeed,
         onResumeDraft: draftSession.resumeHiddenDraft,
         onDiscardDraft: () => {

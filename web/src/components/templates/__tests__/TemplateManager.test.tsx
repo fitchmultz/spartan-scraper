@@ -137,6 +137,90 @@ describe("TemplateManager", () => {
     expect(screen.getByDisplayValue("article h1")).toBeInTheDocument();
   });
 
+  it("guides a blank promoted template draft to the first reusable rule", async () => {
+    vi.mocked(api.createTemplate).mockResolvedValue({
+      data: undefined,
+      error: undefined as never,
+      request: new Request("http://127.0.0.1:8741/v1/templates"),
+      response: new Response(),
+    });
+
+    render(
+      <ToastProvider>
+        <AIAssistantProvider>
+          <TemplateManager
+            templateNames={[]}
+            onTemplatesChanged={onTemplatesChanged}
+            promotionSeed={{
+              kind: "template",
+              mode: "guided-blank",
+              source: {
+                jobId: "job-blank",
+                jobKind: "scrape",
+                jobStatus: "succeeded",
+                label: "Source URL",
+                value: "https://example.com",
+              },
+              suggestedName: "example-com-template",
+              previewUrl: "https://example.com",
+              carriedForward: [
+                "A suggested template name and the verified source page for previewing a new draft.",
+              ],
+              remainingDecisions: [
+                "Add at least one reusable selector rule with both a field name and CSS selector before save unlocks.",
+              ],
+              unsupportedCarryForward: [
+                "This job did not include reusable template rules, so Spartan starts a guided blank draft instead of inventing a fake conversion.",
+              ],
+            }}
+          />
+        </AIAssistantProvider>
+      </ToastProvider>,
+    );
+
+    expect(await screen.findByLabelText(/template name/i)).toHaveValue(
+      "example-com-template",
+    );
+    expect(
+      screen.getByText(/it did not include reusable selector rules/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/save stays disabled until you finish/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/name the first selector rule/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/add a css selector for the first selector rule/i),
+    ).toBeInTheDocument();
+
+    const saveButton = screen.getByRole("button", { name: /save template/i });
+    expect(saveButton).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: /use title starter/i }));
+
+    expect(screen.getByLabelText(/field name/i)).toHaveValue("title");
+    expect(screen.getByLabelText(/css selector/i)).toHaveValue("h1");
+    await waitFor(() => {
+      expect(saveButton).toBeEnabled();
+    });
+
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(api.createTemplate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            name: "example-com-template",
+            selectors: [
+              expect.objectContaining({ name: "title", selector: "h1" }),
+            ],
+          }),
+        }),
+      );
+    });
+  });
+
   it("renders a custom template as an inline editable workspace", async () => {
     vi.mocked(api.getTemplate).mockResolvedValue({
       data: {

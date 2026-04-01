@@ -27,12 +27,6 @@ Audit snapshot: 156 non-test code files exceed 300 lines, the current Go/TS heur
 
 ## Manual QA Follow-up Batches (2026-03-31)
 
-### Batch 2 — Promotion guidance for blank template drafts
-
-- Make the “promote to template” path explain blank-draft saves more directly when Spartan cannot safely infer reusable selectors from the source job.
-- Keep save affordances disabled with explicit inline reasons until the minimum valid selector set exists, and make the first reusable rule easier to author from the seeded draft.
-- Dogfood acceptance: start from a plain scrape job, promote to a template draft, and reach a successful save without trial-and-error.
-
 ### Batch 3 — Jobs and results surface density cleanup
 
 - Reduce the amount of vertical scanning required before completed-job actions, promotion actions, and export controls become obvious on common laptop viewport heights.
