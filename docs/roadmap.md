@@ -27,12 +27,6 @@ Audit snapshot: 156 non-test code files exceed 300 lines, the current Go/TS heur
 
 ## Manual QA Follow-up Batches (2026-03-31)
 
-### Batch 1 — Operator action visibility and dead-end removal
-
-- Keep the primary commit/submit controls visible on long authoring surfaces instead of hiding them below large forms or assistant rails. The immediate cutover fixed the template workspace, watch/export dialogs, and results-route export chooser.
-- Ensure every first-run operator path on a 1280×720 laptop-height viewport exposes a visible next action without requiring guesswork about whether the route is blocked or simply farther down the page.
-- Accept this batch only after a fresh manual dogfood pass covers: job detail → export chooser, promoted template authoring, watch creation, and export schedule creation.
-
 ### Batch 2 — Promotion guidance for blank template drafts
 
 - Make the “promote to template” path explain blank-draft saves more directly when Spartan cannot safely infer reusable selectors from the source job.
