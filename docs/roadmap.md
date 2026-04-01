@@ -21,15 +21,3 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 - Treat Web UI product-grade workflow improvements as higher priority than maintenance-only work and parity-only work until the primary operator journeys feel coherent, legible, and fast.
 - No backwards-compatibility shims are required for the Web UI cutover. Prefer the cleaner immediate product model when redesign choices conflict.
 
-## Audit-Derived Follow-up Work (2026-03-30)
-
-Audit snapshot: 156 non-test code files exceed 300 lines, and the current Go/TS heuristics found roughly 393 functions over 50 LOC.
-
-### Cleanup Batch 4 — Large test surface trimming and fixture reuse
-
-Why: Some of the biggest files in the repo are scenario-heavy tests, and trimming them will make failures easier to localize without weakening coverage.
-
-- Split oversized test files into scenario-focused suites with shared builders/fixtures where that reduces duplication and improves failure locality.
-- Prioritize the largest hand-maintained test hotspots from the audit sample, including `web/src/components/__tests__/FreshStartOperatorFlow.test.tsx`, `web/src/components/templates/__tests__/TemplateManager.test.tsx`, `internal/cli/manage/auth_oauth_test.go`, and `internal/cli/batch/batch_test.go`.
-- Keep end-to-end assertions intact; this batch is about readability, fixture reuse, and lower-churn maintenance rather than changing test scope.
-
