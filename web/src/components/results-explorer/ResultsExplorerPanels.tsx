@@ -235,6 +235,12 @@ export function GuidedExportDrawer({
   onOpenTransform,
 }: GuidedExportDrawerProps) {
   const scopePreview = options[0];
+  const recommendedOptions = options.filter(
+    (option) => option.readiness === "recommended",
+  );
+  const primaryOptions = (
+    recommendedOptions.length > 0 ? recommendedOptions : options
+  ).slice(0, 2);
 
   return (
     <div className="results-explorer__drawer">
@@ -261,6 +267,30 @@ export function GuidedExportDrawer({
         <div className="results-explorer__export-preview">
           <strong>{scopePreview.scopeLabel}</strong>
           <p>{scopePreview.scopeNote}</p>
+        </div>
+      ) : null}
+
+      {primaryOptions.length > 0 ? (
+        <div className="results-explorer__export-quick-start">
+          <div className="results-explorer__export-quick-copy">
+            <strong>Start with the direct handoff</strong>
+            <p>
+              Keep the most common downloads visible while you scan the rest of
+              the export guidance.
+            </p>
+          </div>
+          <div className="results-explorer__export-quick-actions">
+            {primaryOptions.map((option) => (
+              <button
+                key={`quick-${option.format}`}
+                type="button"
+                onClick={() => onExport(option.format)}
+                disabled={isExporting}
+              >
+                Export {option.title} now
+              </button>
+            ))}
+          </div>
         </div>
       ) : null}
 

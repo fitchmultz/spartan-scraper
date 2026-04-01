@@ -294,11 +294,19 @@ describe("ResultsExplorer", () => {
         /Current search and status filters only narrow the on-screen reader/i,
       ),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /^Export JSONL now$/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /^Export CSV now$/i }),
+    ).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /^Export JSON$/i }));
+    await user.click(
+      screen.getByRole("button", { name: /^Export JSONL now$/i }),
+    );
 
     expect(exportResultsMock).toHaveBeenCalledWith("job-1", {
-      format: "json",
+      format: "jsonl",
     });
   });
 
