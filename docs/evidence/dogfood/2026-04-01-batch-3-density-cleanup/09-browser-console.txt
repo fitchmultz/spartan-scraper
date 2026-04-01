@@ -1,0 +1,14 @@
+[36m[info][0m %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[36m[info][0m %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[debug] [vite] connected.
+[36m[info][0m %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[36m[info][0m %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[36m[info][0m %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[36m[info][0m %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[36m[info][0m %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[debug] [vite] hot updated: /src/components/jobs/JobMonitoringDashboard.tsx
+[36m[info][0m %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[debug] [vite] connected.
+[36m[info][0m %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[debug] [vite] connected.
+[36m[info][0m %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold

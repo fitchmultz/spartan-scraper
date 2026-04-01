@@ -96,6 +96,61 @@ function LaneSection({
   );
 }
 
+interface CompletedQuickAccessProps {
+  jobs: JobMonitorCardModel[];
+  onViewResults: (jobId: string) => void;
+}
+
+function CompletedQuickAccess({
+  jobs,
+  onViewResults,
+}: CompletedQuickAccessProps) {
+  const visibleJobs = jobs.filter((job) => job.canViewResults).slice(0, 3);
+
+  if (visibleJobs.length === 0) {
+    return null;
+  }
+
+  return (
+    <section
+      className="job-dashboard-quick-access"
+      aria-label="Recent completed jobs"
+    >
+      <div className="job-dashboard-quick-access__header">
+        <div>
+          <div className="job-lane__eyebrow">Quick access</div>
+          <h3>Jump back into recent completed work</h3>
+          <p>
+            Keep saved-output routes within one tap instead of scrolling through
+            every monitoring lane first.
+          </p>
+        </div>
+      </div>
+
+      <div className="job-dashboard-quick-access__grid">
+        {visibleJobs.map((job) => (
+          <article key={job.id} className="job-dashboard-quick-access__card">
+            <div>
+              <div className="job-dashboard-quick-access__meta">
+                <span className="job-run-card__kind">{job.kind}</span>
+                <span className="job-run-card__updated">
+                  {job.updatedAtLabel}
+                </span>
+              </div>
+              <h4>{job.shortId}</h4>
+              <p>{job.activityText}</p>
+            </div>
+
+            <button type="button" onClick={() => onViewResults(job.id)}>
+              View results
+            </button>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export interface JobMonitoringDashboardProps {
   jobs: JobEntry[];
   failedJobs: JobEntry[];
@@ -286,6 +341,11 @@ export function JobMonitoringDashboard({
           </strong>
         </div>
       </div>
+
+      <CompletedQuickAccess
+        jobs={dashboard.lanes.completed}
+        onViewResults={handleViewResults}
+      />
 
       <div className="job-dashboard-controls">
         <div

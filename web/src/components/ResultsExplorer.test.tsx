@@ -8,7 +8,7 @@
 
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Job, ResultItem } from "../types";
@@ -110,7 +110,13 @@ const items: ResultItem[] = [
   },
 ];
 
-function renderExplorer() {
+type PromoteHandler = ComponentProps<typeof ResultsExplorer>["onPromote"];
+
+function renderExplorer({
+  onPromote = vi.fn() as PromoteHandler,
+}: {
+  onPromote?: PromoteHandler;
+} = {}) {
   return render(
     <AIAssistantProvider>
       <ResultsExplorer
@@ -133,7 +139,7 @@ function renderExplorer() {
         availableJobs={jobs}
         currentJob={jobs[0]}
         jobType="crawl"
-        onPromote={vi.fn()}
+        onPromote={onPromote}
       />
     </AIAssistantProvider>,
   );
@@ -273,6 +279,38 @@ describe("ResultsExplorer", () => {
 
     await waitFor(() => {
       expect(screen.getByLabelText("Instructions")).toHaveValue("");
+    });
+  });
+
+  it("keeps promote and export quick actions visible on first paint", async () => {
+    const user = userEvent.setup();
+    const onPromote = vi.fn();
+    renderExplorer({ onPromote });
+
+    expect(
+      screen.getByRole("button", { name: /^Save as Template$/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^Create Watch$/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /^Create Export Schedule$/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /^Export JSONL$/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /^Export CSV$/i }),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: /^Save as Template$/i }),
+    );
+    expect(onPromote).toHaveBeenCalledWith("template");
+
+    await user.click(screen.getByRole("button", { name: /^Export JSONL$/i }));
+    expect(exportResultsMock).toHaveBeenCalledWith("job-1", {
+      format: "jsonl",
     });
   });
 

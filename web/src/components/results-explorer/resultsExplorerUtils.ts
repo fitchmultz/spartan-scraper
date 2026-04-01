@@ -34,6 +34,19 @@ export interface ExportGuidanceOption {
   scopeNote: string;
 }
 
+export function getPrimaryExportGuidanceOptions(
+  options: ExportGuidanceOption[],
+): ExportGuidanceOption[] {
+  const recommendedOptions = options.filter(
+    (option) => option.readiness === "recommended",
+  );
+
+  return (recommendedOptions.length > 0 ? recommendedOptions : options).slice(
+    0,
+    2,
+  );
+}
+
 interface ExportGuidanceInput {
   totalResults: number;
   visibleResults: number;

@@ -113,7 +113,10 @@ describe("JobMonitoringDashboard", () => {
       name: /in progress/i,
     });
     const completedLane = screen.getByRole("region", {
-      name: /recent completed/i,
+      name: /^Recent Completed$/i,
+    });
+    const quickAccess = screen.getByRole("region", {
+      name: /^Recent completed jobs$/i,
     });
 
     expect(
@@ -127,6 +130,9 @@ describe("JobMonitoringDashboard", () => {
     ).toBeInTheDocument();
     expect(
       within(completedLane).getByRole("link", { name: /view results/i }),
+    ).toBeInTheDocument();
+    expect(
+      within(quickAccess).getByRole("button", { name: /view results/i }),
     ).toBeInTheDocument();
   });
 

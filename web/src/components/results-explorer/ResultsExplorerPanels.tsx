@@ -14,6 +14,7 @@ import type {
 import type { CrawlDiffResult, ResearchDiffResult } from "../../lib/diff-utils";
 import type { TreeNode } from "../../lib/tree-utils";
 import type { Job } from "../../types";
+import type { PromotionOption } from "../../types/promotion";
 import {
   ResultsAssistantSection,
   type ResultsAssistantMode,
@@ -21,10 +22,11 @@ import {
 import { ClusterGraph } from "../ClusterGraph";
 import { DiffViewer } from "../DiffViewer";
 import { EvidenceChart } from "../EvidenceChart";
-import type {
-  ExportFormat,
-  SecondaryToolId,
-  StatusFilter,
+import {
+  getPrimaryExportGuidanceOptions,
+  type ExportFormat,
+  type SecondaryToolId,
+  type StatusFilter,
 } from "./resultsExplorerUtils";
 import type {
   getAvailableSecondaryTools,
@@ -32,6 +34,15 @@ import type {
 } from "./resultsExplorerUtils";
 import { TransformPreview } from "../TransformPreview";
 import { TreeView } from "../TreeView";
+
+interface ResultsQuickActionRailProps {
+  promotionOptions: PromotionOption[];
+  exportOptions: ReturnType<typeof getExportGuidanceOptions>;
+  isExporting: boolean;
+  onPromote: (option: PromotionOption) => void;
+  onExport: (format: ExportFormat) => void;
+  onOpenExport: () => void;
+}
 
 interface ReaderToolbarProps {
   searchQuery: string;
@@ -121,6 +132,75 @@ interface ResultsAssistantRailProps {
   onShapeFormatChange: (format: "md" | "csv" | "xlsx") => void;
   currentShape?: ExportShapeConfig;
   onApplyShape: (shape: ExportShapeConfig) => void;
+}
+
+export function ResultsQuickActionRail({
+  promotionOptions,
+  exportOptions,
+  isExporting,
+  onPromote,
+  onExport,
+  onOpenExport,
+}: ResultsQuickActionRailProps) {
+  const directExportOptions = getPrimaryExportGuidanceOptions(exportOptions);
+  const eligiblePromotionOptions = promotionOptions.filter(
+    (option) => option.eligible,
+  );
+
+  return (
+    <section
+      className="results-explorer__quick-actions"
+      aria-label="Job quick actions"
+    >
+      <div className="results-explorer__quick-actions-copy">
+        <div className="results-viewer__section-label">Operator actions</div>
+        <h4>Inspect, export, or promote without leaving the fold</h4>
+        <p className="form-help">
+          Keep the common next steps one tap away, then open the deeper
+          promotion and export guidance only when you need the full context.
+        </p>
+      </div>
+
+      <div className="results-explorer__quick-actions-groups">
+        {eligiblePromotionOptions.length > 0 ? (
+          <div className="results-explorer__quick-actions-group">
+            <strong>Promote this job</strong>
+            <div className="results-explorer__quick-actions-buttons">
+              {eligiblePromotionOptions.map((option) => (
+                <button
+                  key={option.destination}
+                  type="button"
+                  className="secondary"
+                  onClick={() => onPromote(option)}
+                >
+                  {option.title}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        <div className="results-explorer__quick-actions-group">
+          <strong>Export the saved output</strong>
+          <div className="results-explorer__quick-actions-buttons">
+            {directExportOptions.map((option) => (
+              <button
+                key={`top-${option.format}`}
+                type="button"
+                onClick={() => onExport(option.format)}
+                disabled={isExporting}
+              >
+                Export {option.title}
+              </button>
+            ))}
+            <button type="button" className="secondary" onClick={onOpenExport}>
+              More export options
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 export function ReaderToolbar({
@@ -235,12 +315,7 @@ export function GuidedExportDrawer({
   onOpenTransform,
 }: GuidedExportDrawerProps) {
   const scopePreview = options[0];
-  const recommendedOptions = options.filter(
-    (option) => option.readiness === "recommended",
-  );
-  const primaryOptions = (
-    recommendedOptions.length > 0 ? recommendedOptions : options
-  ).slice(0, 2);
+  const primaryOptions = getPrimaryExportGuidanceOptions(options);
 
   return (
     <div className="results-explorer__drawer">

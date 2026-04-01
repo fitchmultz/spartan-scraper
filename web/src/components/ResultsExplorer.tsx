@@ -25,6 +25,7 @@ import {
   GuidedExportDrawer,
   ReaderToolbar,
   ResultsAssistantRail,
+  ResultsQuickActionRail,
   ResultsToolPanel,
   SecondaryToolsDrawer,
 } from "./results-explorer/ResultsExplorerPanels";
@@ -169,9 +170,15 @@ export function ResultsExplorer({
           </div>
 
           {currentJob?.status === "succeeded" ? (
-            <JobPromotionPanel
-              options={explorer.promotionOptions}
-              onPromote={(destination) => onPromote(destination)}
+            <ResultsQuickActionRail
+              promotionOptions={explorer.promotionOptions}
+              exportOptions={explorer.exportOptions}
+              isExporting={explorer.isExporting}
+              onPromote={(option) => onPromote(option.destination)}
+              onExport={(format) => {
+                void explorer.handleDirectExport(format);
+              }}
+              onOpenExport={() => explorer.setIsExportOpen(true)}
             />
           ) : null}
 
@@ -296,6 +303,13 @@ export function ResultsExplorer({
               void explorer.handleShapeExport();
             }}
           />
+
+          {currentJob?.status === "succeeded" ? (
+            <JobPromotionPanel
+              options={explorer.promotionOptions}
+              onPromote={(destination) => onPromote(destination)}
+            />
+          ) : null}
         </div>
 
         <ResultsAssistantRail

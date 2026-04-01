@@ -1300,6 +1300,7 @@
   flex-wrap: wrap;
 }
 
+.results-explorer__quick-actions,
 .results-explorer__promotion-panel,
 .promotion-notice {
   display: grid;
@@ -1308,6 +1309,50 @@
   border: 1px solid var(--stroke);
   border-radius: 16px;
   background: var(--bg-alt);
+}
+
+.results-explorer__quick-actions {
+  background:
+    linear-gradient(180deg, rgba(255, 183, 0, 0.08), transparent 160px),
+    var(--bg-alt);
+}
+
+.results-explorer__quick-actions-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.results-explorer__quick-actions-copy h4 {
+  margin: 0;
+}
+
+.results-explorer__quick-actions-copy p {
+  margin: 0;
+}
+
+.results-explorer__quick-actions-groups {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.results-explorer__quick-actions-group {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid var(--stroke);
+  background: var(--bg);
+}
+
+.results-explorer__quick-actions-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.results-explorer__promotion-panel {
+  gap: 12px;
 }
 
 .results-explorer__promotion-grid {
@@ -3009,6 +3054,59 @@
   margin: 0;
 }
 
+.job-dashboard-quick-access {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--stroke);
+  background:
+    linear-gradient(180deg, rgba(88, 214, 141, 0.1), transparent 140px),
+    var(--surface-muted);
+}
+
+.job-dashboard-quick-access__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.job-dashboard-quick-access__header h3,
+.job-dashboard-quick-access__card h4 {
+  margin: 0;
+}
+
+.job-dashboard-quick-access__header p,
+.job-dashboard-quick-access__card p {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.job-dashboard-quick-access__grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.job-dashboard-quick-access__card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid var(--stroke);
+  background: var(--panel);
+}
+
+.job-dashboard-quick-access__meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
 .job-lane-grid {
   display: grid;
   gap: 16px;
@@ -3410,7 +3508,8 @@
     align-items: stretch;
   }
 
-  .job-run-card__actions > :is(button, a) {
+  .job-run-card__actions > :is(button, a),
+  .job-dashboard-quick-access__card > button {
     width: 100%;
   }
 
@@ -3439,6 +3538,7 @@
   .results-explorer__actions,
   .results-explorer__export-actions,
   .results-explorer__export-quick-actions,
+  .results-explorer__quick-actions-buttons,
   .template-manager__toolbar-actions,
   .template-manager__detail-actions,
   .template-manager__rail-tabs,
@@ -3509,8 +3609,10 @@
   }
 
   .results-explorer-toolbar,
+  .results-explorer__quick-actions-groups,
   .results-explorer__tool-grid,
   .results-explorer__export-grid,
+  .job-dashboard-quick-access__grid,
   .template-manager__workspace,
   .template-editor-inline__json-grid {
     grid-template-columns: 1fr;
