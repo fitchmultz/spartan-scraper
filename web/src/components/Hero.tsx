@@ -1,11 +1,9 @@
 /**
- * Hero Component
- *
- * Displays the main header and live status overview. Shows the application title,
- * description, and real-time metrics including loading status, job queue counts,
- * total jobs, and headless/playwright mode configuration.
- *
- * @module Hero
+ * Purpose: Render the hero UI surface for the web operator experience.
+ * Responsibilities: Define the component, its local view helpers, and the presentation logic owned by this file.
+ * Scope: File-local UI behavior only; routing, persistence, and broader feature orchestration stay outside this file.
+ * Usage: Import from the surrounding feature or route components that own this surface.
+ * Invariants/Assumptions: Props and callbacks come from the surrounding feature contracts and should remain the single source of truth.
  */
 
 import { ThemeToggle } from "./ThemeToggle";

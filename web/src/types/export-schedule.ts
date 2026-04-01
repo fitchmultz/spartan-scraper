@@ -1,14 +1,9 @@
 /**
- * Export Schedule Types Module
- *
- * Centralizes all export schedule-related type definitions used across the
- * export schedule management components and hooks.
- *
- * This module does NOT handle:
- * - Runtime validation or type guards
- * - Business logic or state management
- *
- * @module types/export-schedule
+ * Purpose: Define shared type contracts for export schedule.
+ * Responsibilities: Export reusable TypeScript types and aliases that keep the surrounding feature consistent.
+ * Scope: Type-level contracts only; runtime logic stays in implementation modules.
+ * Usage: Import these types from adjacent feature, route, and test modules.
+ * Invariants/Assumptions: The exported types should reflect the current source-of-truth contracts without introducing runtime side effects.
  */
 
 import type {

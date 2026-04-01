@@ -1,24 +1,9 @@
 /**
- * formBuilderUtils
- *
- * Purpose:
- * - Hold pure helpers and shared option data for the form builder UI.
- *
- * Responsibilities:
- * - Define stable form-type filter options.
- * - Build editable field-value maps from detected forms.
- * - Limit submitted field values to the selected form.
- *
- * Scope:
- * - Pure utility logic only; no React state or API calls.
- *
- * Usage:
- * - Used by FormBuilder and its focused unit tests.
- *
- * Invariants/Assumptions:
- * - Field names are stable identifiers within a detected form.
- * - Empty field values are omitted from submission payloads.
- * - Form-type options stay in a predictable order for the UI.
+ * Purpose: Render the form builder utils UI surface for the web operator experience.
+ * Responsibilities: Define the component, its local view helpers, and the presentation logic owned by this file.
+ * Scope: File-local UI behavior only; routing, persistence, and broader feature orchestration stay outside this file.
+ * Usage: Import from the surrounding feature or route components that own this surface.
+ * Invariants/Assumptions: Props and callbacks come from the surrounding feature contracts and should remain the single source of truth.
  */
 
 export interface FieldMatchLike {

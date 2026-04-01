@@ -1,3 +1,11 @@
+/**
+ * Purpose: Provide reusable ai image utils helpers for the web app.
+ * Responsibilities: Define pure helpers, adapters, and small utility contracts shared across feature modules.
+ * Scope: Shared helper logic only; route rendering and persistence stay elsewhere.
+ * Usage: Import from adjacent modules that need the helper behavior defined here.
+ * Invariants/Assumptions: Helpers should stay side-effect-light and reflect the current product contracts.
+ */
+
 import type { AiImageInput } from "../api";
 
 export const MAX_AI_IMAGES = 4;

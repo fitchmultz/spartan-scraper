@@ -1,11 +1,9 @@
 /**
- * Theme Toggle Component
- *
- * Provides UI for switching between light, dark, and system themes.
- * Includes a quick toggle button and a dropdown menu for explicit selection.
- * Supports click to toggle and right-click for dropdown menu.
- *
- * @module ThemeToggle
+ * Purpose: Render the theme toggle UI surface for the web operator experience.
+ * Responsibilities: Define the component, its local view helpers, and the presentation logic owned by this file.
+ * Scope: File-local UI behavior only; routing, persistence, and broader feature orchestration stay outside this file.
+ * Usage: Import from the surrounding feature or route components that own this surface.
+ * Invariants/Assumptions: Props and callbacks come from the surrounding feature contracts and should remain the single source of truth.
  */
 
 import { useState, useRef, useEffect } from "react";

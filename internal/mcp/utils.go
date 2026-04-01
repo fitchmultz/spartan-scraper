@@ -1,17 +1,20 @@
-// MCP server utility functions.
+// Package mcp provides mcp functionality for Spartan Scraper.
+//
+// Purpose:
+// - Implement utils support for package mcp.
 //
 // Responsibilities:
-// - Poll job store for completion (waitForJob)
-// - Decode tool arguments with the shared persisted-parameter semantics.
-// - Resolve authentication profiles for tools
+// - Define the file-local types, functions, and helpers that belong to this package concern.
 //
-// Does NOT handle:
-// - Tool execution logic or business operations
-// - Server lifecycle management
+// Scope:
+// - Package-internal behavior owned by this file; broader orchestration stays in adjacent package files.
 //
-// Invariants:
-// - waitForJob has independent timeout timer (not cancellable by caller context)
-// - Missing or invalid tool arguments use explicit defaults.
+// Usage:
+// - Used by other files in package `mcp` and any exported callers that depend on this package.
+//
+// Invariants/Assumptions:
+// - This file should preserve the package contract and rely on surrounding package configuration as the source of truth.
+
 package mcp
 
 import (

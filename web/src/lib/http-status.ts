@@ -1,22 +1,9 @@
 /**
- * Shared HTTP status presentation helpers.
- *
- * Purpose:
- * - Centralize CSS class mapping for HTTP status code badges.
- *
- * Responsibilities:
- * - Provide one simple success/running/failed mapping for compact badges.
- * - Provide one detailed mapping for inspector-style status displays.
- *
- * Scope:
- * - Web UI display helpers only.
- *
- * Usage:
- * - Import from components that render HTTP status badges.
- *
- * Invariants/Assumptions:
- * - Non-positive statuses can optionally render as an empty class.
- * - Unknown or missing statuses map to explicit fallback classes.
+ * Purpose: Provide reusable http status helpers for the web app.
+ * Responsibilities: Define pure helpers, adapters, and small utility contracts shared across feature modules.
+ * Scope: Shared helper logic only; route rendering and persistence stay elsewhere.
+ * Usage: Import from adjacent modules that need the helper behavior defined here.
+ * Invariants/Assumptions: Helpers should stay side-effect-light and reflect the current product contracts.
  */
 
 export function getSimpleHttpStatusClass(

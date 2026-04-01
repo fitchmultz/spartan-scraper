@@ -1,7 +1,20 @@
-// File log.go configures the default slog logger based on Config.
+// Package config provides config functionality for Spartan Scraper.
 //
-// It does NOT implement configuration loading (see config.go) and it does NOT implement
-// runtime log-level switching; it is intended to run once at startup.
+// Purpose:
+// - Implement log support for package config.
+//
+// Responsibilities:
+// - Define the file-local types, functions, and helpers that belong to this package concern.
+//
+// Scope:
+// - Package-internal behavior owned by this file; broader orchestration stays in adjacent package files.
+//
+// Usage:
+// - Used by other files in package `config` and any exported callers that depend on this package.
+//
+// Invariants/Assumptions:
+// - This file should preserve the package contract and rely on surrounding package configuration as the source of truth.
+
 package config
 
 import (

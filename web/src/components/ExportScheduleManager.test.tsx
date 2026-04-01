@@ -1,9 +1,11 @@
 /**
- * Tests for ExportScheduleManager.
- *
- * Verifies schedule list actions trigger the expected callbacks and that the
- * export history modal loads and paginates correctly.
+ * Purpose: Verify export schedule manager behavior with automated regression coverage.
+ * Responsibilities: Define focused test cases, fixtures, and assertions for the module under test.
+ * Scope: Automated test coverage only; production logic stays in the adjacent source modules.
+ * Usage: Run through the repo test entrypoints or the feature-local test command.
+ * Invariants/Assumptions: Tests should describe the current contract clearly and remain deterministic under local CI settings.
  */
+
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";

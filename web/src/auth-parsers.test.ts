@@ -1,9 +1,11 @@
 /**
- * Tests for authentication parsing utilities.
- *
- * Tests cookie parsing, query parameter parsing, and auth payload building
- * for scrape, crawl, and research request forms.
+ * Purpose: Verify auth parsers behavior with automated regression coverage.
+ * Responsibilities: Define focused test cases, fixtures, and assertions for the module under test.
+ * Scope: Automated test coverage only; production logic stays in the adjacent source modules.
+ * Usage: Run through the repo test entrypoints or the feature-local test command.
+ * Invariants/Assumptions: Tests should describe the current contract clearly and remain deterministic under local CI settings.
  */
+
 import { describe, it, expect } from "vitest";
 import { parseCookies, parseQueryParams, buildAuth } from "./lib/form-utils";
 

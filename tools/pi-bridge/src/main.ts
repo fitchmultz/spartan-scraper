@@ -1,3 +1,11 @@
+/**
+ * Purpose: Implement the pi bridge main module.
+ * Responsibilities: Define bridge-local runtime behavior, types, or tests for the SDK-backed integration layer.
+ * Scope: pi-bridge internals only; repository product features stay outside this package.
+ * Usage: Import from adjacent pi-bridge modules or run through the package build and test commands.
+ * Invariants/Assumptions: The bridge should preserve deterministic local behavior across configured providers and fixtures.
+ */
+
 import readline from "node:readline";
 import { loadBridgeConfig } from "./config.js";
 import { FixtureBackend } from "./fixture-backend.js";

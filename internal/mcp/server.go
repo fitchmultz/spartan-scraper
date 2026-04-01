@@ -1,18 +1,20 @@
-// MCP server lifecycle and request routing.
+// Package mcp provides mcp functionality for Spartan Scraper.
+//
+// Purpose:
+// - Implement server support for package mcp.
 //
 // Responsibilities:
-// - Initialize server with store and job manager
-// - Handle JSON-RPC 2.0 requests over stdio
-// - Route initialize, tools/list, and tools/call methods
+// - Define the file-local types, functions, and helpers that belong to this package concern.
 //
-// Does NOT handle:
-// - Tool execution logic (delegated to handlers.go)
-// - Job execution or worker pool management
+// Scope:
+// - Package-internal behavior owned by this file; broader orchestration stays in adjacent package files.
 //
-// Invariants:
-// - Server context is independent of Serve context (for graceful shutdown)
-// - Requests are line-delimited JSON over stdin/stdout
-// - Manager is started immediately and stopped on Close
+// Usage:
+// - Used by other files in package `mcp` and any exported callers that depend on this package.
+//
+// Invariants/Assumptions:
+// - This file should preserve the package contract and rely on surrounding package configuration as the source of truth.
+
 package mcp
 
 import (

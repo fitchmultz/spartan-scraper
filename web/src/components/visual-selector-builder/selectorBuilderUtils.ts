@@ -1,25 +1,9 @@
 /**
- * selectorBuilderUtils
- *
- * Purpose:
- * - Hold pure DOM-tree and selector-builder helpers used by the visual selector UI.
- *
- * Responsibilities:
- * - Compute expanded DOM paths for initial tree display.
- * - Generate selector suggestions for a selected DOM node.
- * - Evaluate DOM-tree search matches recursively.
- * - Create new selector rules with consistent defaults.
- *
- * Scope:
- * - Pure helper logic only; no React state or network calls.
- *
- * Usage:
- * - Used by VisualSelectorBuilder and its focused tests.
- *
- * Invariants/Assumptions:
- * - Missing DOM fields fall back to safe empty values.
- * - Selector suggestions are ordered from more-specific to less-specific.
- * - New selector rules always start with the same default extraction settings.
+ * Purpose: Render the selector builder utils UI surface for the web operator experience.
+ * Responsibilities: Define the component, its local view helpers, and the presentation logic owned by this file.
+ * Scope: File-local UI behavior only; routing, persistence, and broader feature orchestration stay outside this file.
+ * Usage: Import from the surrounding feature or route components that own this surface.
+ * Invariants/Assumptions: Props and callbacks come from the surrounding feature contracts and should remain the single source of truth.
  */
 
 import type { DomNode, SelectorRule } from "../../api";

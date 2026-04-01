@@ -1,3 +1,20 @@
+// Package store provides store functionality for Spartan Scraper.
+//
+// Purpose:
+// - Implement store support for package store.
+//
+// Responsibilities:
+// - Define the file-local types, functions, and helpers that belong to this package concern.
+//
+// Scope:
+// - Package-internal behavior owned by this file; broader orchestration stays in adjacent package files.
+//
+// Usage:
+// - Used by other files in package `store` and any exported callers that depend on this package.
+//
+// Invariants/Assumptions:
+// - This file should preserve the package contract and rely on surrounding package configuration as the source of truth.
+
 /*
 Purpose: Define the long-lived SQLite store handle shared across storage subdomains.
 Responsibilities: Own the database connection, prepared statements, and per-store auxiliary resources such as the dedup content index.

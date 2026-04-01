@@ -1,3 +1,20 @@
+// Package jobs provides jobs functionality for Spartan Scraper.
+//
+// Purpose:
+// - Implement manager support for package jobs.
+//
+// Responsibilities:
+// - Define the file-local types, functions, and helpers that belong to this package concern.
+//
+// Scope:
+// - Package-internal behavior owned by this file; broader orchestration stays in adjacent package files.
+//
+// Usage:
+// - Used by other files in package `jobs` and any exported callers that depend on this package.
+//
+// Invariants/Assumptions:
+// - This file should preserve the package contract and rely on surrounding package configuration as the source of truth.
+
 /*
 Purpose: Coordinate local scrape, crawl, and research job execution against the persistent store.
 Responsibilities: Own queueing state, worker lifecycle, execution dependencies, and operator-facing job events.

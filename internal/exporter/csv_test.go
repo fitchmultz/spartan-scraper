@@ -1,16 +1,20 @@
-// Tests for CSV export functionality in the exporter package.
+// Package exporter provides exporter functionality for Spartan Scraper.
 //
-// This file tests the Export() and ExportStream() functions with
-// "csv" format, covering:
-// - Scrape, Crawl, and Research job kinds
-// - Stable field ordering (alphabetical)
-// - Consistent header generation
-// - Proper CSV formatting
+// Purpose:
+// - Verify csv test behavior for package exporter.
 //
-// The CSV export converts JSONL to CSV with:
-// - Header row with field names sorted alphabetically
-// - Normalized fields prefixed with "field_"
-// - Data rows with properly escaped values
+// Responsibilities:
+// - Define focused Go test coverage, fixtures, and assertions for the package behavior exercised here.
+//
+// Scope:
+// - Automated test coverage only; production behavior stays in non-test package files.
+//
+// Usage:
+// - Run with `go test` for package `exporter` or through `make test-ci`/`make ci`.
+//
+// Invariants/Assumptions:
+// - Tests should remain deterministic and describe the package contract they protect.
+
 package exporter
 
 import (

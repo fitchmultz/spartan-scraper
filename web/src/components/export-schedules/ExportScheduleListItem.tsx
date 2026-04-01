@@ -1,15 +1,9 @@
 /**
- * ExportScheduleListItem Component
- *
- * Renders a single export schedule row in the schedules table.
- * Displays schedule status, filters, destination, format, and action buttons.
- *
- * This component does NOT handle:
- * - API calls for export schedule operations
- * - State management for the schedule list
- * - Modal dialogs (those are handled by parent)
- *
- * @module components/export-schedules/ExportScheduleListItem
+ * Purpose: Render the export schedule list item UI surface for the web operator experience.
+ * Responsibilities: Define the component, its local view helpers, and the presentation logic owned by this file.
+ * Scope: File-local UI behavior only; routing, persistence, and broader feature orchestration stay outside this file.
+ * Usage: Import from the surrounding feature or route components that own this surface.
+ * Invariants/Assumptions: Props and callbacks come from the surrounding feature contracts and should remain the single source of truth.
  */
 
 import type { ExportScheduleListItemProps } from "../../types/export-schedule";

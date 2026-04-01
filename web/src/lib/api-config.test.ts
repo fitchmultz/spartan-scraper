@@ -1,9 +1,11 @@
 /**
- * Tests for API URL configuration utilities.
- *
- * Tests base URL resolution, path construction, and URL building
- * for API requests with various base URL configurations.
+ * Purpose: Verify api config behavior with automated regression coverage.
+ * Responsibilities: Define focused test cases, fixtures, and assertions for the module under test.
+ * Scope: Automated test coverage only; production logic stays in the adjacent source modules.
+ * Usage: Run through the repo test entrypoints or the feature-local test command.
+ * Invariants/Assumptions: Tests should describe the current contract clearly and remain deterministic under local CI settings.
  */
+
 import { describe, it, expect, vi } from "vitest";
 import { buildApiUrl, buildApiUrlWithBase, getApiBaseUrl } from "./api-config";
 

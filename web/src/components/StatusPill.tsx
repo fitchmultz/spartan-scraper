@@ -1,21 +1,9 @@
 /**
- * Shared status pill component.
- *
- * Purpose:
- * - Render a consistent inline pill with an optional status dot.
- *
- * Responsibilities:
- * - Apply the shared status tone palette.
- * - Keep repeated status-chip markup out of feature components.
- *
- * Scope:
- * - Compact web UI status labels only.
- *
- * Usage:
- * - Import into feature components that need small inline status chips.
- *
- * Invariants/Assumptions:
- * - The component is presentation-only and does not own status-mapping logic.
+ * Purpose: Render the status pill UI surface for the web operator experience.
+ * Responsibilities: Define the component, its local view helpers, and the presentation logic owned by this file.
+ * Scope: File-local UI behavior only; routing, persistence, and broader feature orchestration stay outside this file.
+ * Usage: Import from the surrounding feature or route components that own this surface.
+ * Invariants/Assumptions: Props and callbacks come from the surrounding feature contracts and should remain the single source of truth.
  */
 
 import type { CSSProperties, ReactNode } from "react";

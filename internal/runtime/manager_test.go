@@ -1,3 +1,20 @@
+// Package runtime provides runtime functionality for Spartan Scraper.
+//
+// Purpose:
+// - Verify manager test behavior for package runtime.
+//
+// Responsibilities:
+// - Define focused Go test coverage, fixtures, and assertions for the package behavior exercised here.
+//
+// Scope:
+// - Automated test coverage only; production behavior stays in non-test package files.
+//
+// Usage:
+// - Run with `go test` for package `runtime` or through `make test-ci`/`make ci`.
+//
+// Invariants/Assumptions:
+// - Tests should remain deterministic and describe the package contract they protect.
+
 /*
 Purpose: Verify runtime job-manager bootstrap handles proxy-pool optionality correctly.
 Responsibilities: Cover the disabled-by-default path, explicit missing-path failures, and successful proxy-pool attachment.

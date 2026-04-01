@@ -1,18 +1,20 @@
-// Tests for XLSX export functionality in the exporter package.
+// Package exporter provides exporter functionality for Spartan Scraper.
 //
-// This file tests the Export() and ExportStream() functions with
-// "xlsx" format, covering:
-// - Scrape, Crawl, and Research job kinds
-// - Stable field ordering (alphabetical)
-// - Multi-sheet structure for research jobs
-// - Header formatting and column widths
-// - Large dataset streaming
+// Purpose:
+// - Verify xlsx test behavior for package exporter.
 //
-// The XLSX export converts JSONL to Excel format with:
-// - Header row with field names sorted alphabetically
-// - Normalized fields prefixed with "field_"
-// - Bold headers with gray background
-// - Auto-sized columns
+// Responsibilities:
+// - Define focused Go test coverage, fixtures, and assertions for the package behavior exercised here.
+//
+// Scope:
+// - Automated test coverage only; production behavior stays in non-test package files.
+//
+// Usage:
+// - Run with `go test` for package `exporter` or through `make test-ci`/`make ci`.
+//
+// Invariants/Assumptions:
+// - Tests should remain deterministic and describe the package contract they protect.
+
 package exporter
 
 import (

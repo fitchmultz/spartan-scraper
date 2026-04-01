@@ -1,19 +1,9 @@
 /**
- * Build chunking configuration for Vite/Rollup.
- *
- * This module provides the manualChunks function that determines
- * how modules are split into separate chunks during the build.
- * The goal is to minimize initial bundle size while maintaining
- * reasonable chunk granularity.
- *
- * Chunking strategy:
- * - vendor-react: React core libraries (always needed, loaded first)
- * - vendor-ui: UI primitives (cmdk, radix-ui) - needed for interactions
- * - vendor-onboarding: react-joyride and deps - only needed for first-time users
- * - feature-*: Major feature areas split by directory for code splitting
- * - api: Generated API client code (large type definitions)
- *
- * @module lib/build-chunks
+ * Purpose: Provide reusable build chunks helpers for the web app.
+ * Responsibilities: Define pure helpers, adapters, and small utility contracts shared across feature modules.
+ * Scope: Shared helper logic only; route rendering and persistence stay elsewhere.
+ * Usage: Import from adjacent modules that need the helper behavior defined here.
+ * Invariants/Assumptions: Helpers should stay side-effect-light and reflect the current product contracts.
  */
 
 /**

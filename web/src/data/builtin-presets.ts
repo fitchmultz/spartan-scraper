@@ -1,11 +1,9 @@
 /**
- * Built-in Job Presets
- *
- * Pre-configured job templates for common scraping patterns. These presets
- * provide sensible defaults for different site types and use cases, helping
- * users get started quickly without understanding all configuration options.
- *
- * @module data/builtin-presets
+ * Purpose: Provide the builtin presets module for this repository.
+ * Responsibilities: Define the file-local logic, exports, and helpers that belong to this module.
+ * Scope: This file only; broader orchestration stays in adjacent modules.
+ * Usage: Import from the owning package or feature surface.
+ * Invariants/Assumptions: The file should stay aligned with surrounding source-of-truth contracts and avoid hidden side effects.
  */
 
 import type { JobPreset } from "../types/presets";

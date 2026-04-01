@@ -1,10 +1,9 @@
 /**
- * OAuth Callback Handler Component
- *
- * Handles the OAuth 2.0 callback flow, exchanges the authorization code
- * for tokens, and notifies the parent window or redirects back to the app.
- *
- * @module OAuthCallback
+ * Purpose: Render the o auth callback UI surface for the web operator experience.
+ * Responsibilities: Define the component, its local view helpers, and the presentation logic owned by this file.
+ * Scope: File-local UI behavior only; routing, persistence, and broader feature orchestration stay outside this file.
+ * Usage: Import from the surrounding feature or route components that own this surface.
+ * Invariants/Assumptions: Props and callbacks come from the surrounding feature contracts and should remain the single source of truth.
  */
 
 import { useCallback, useEffect, useState } from "react";

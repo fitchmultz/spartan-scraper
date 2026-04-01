@@ -1,14 +1,20 @@
-// Tests for JSONL export functionality in the exporter package.
+// Package exporter provides exporter functionality for Spartan Scraper.
 //
-// This file tests the Export() and ExportStream() functions with
-// "jsonl" format, covering:
-// - Scrape, Crawl, and Research job kinds
-// - JSONL output remains unchanged (pass-through)
-// - Proper newline-delimited JSON validation
-// - Error handling for writer failures
+// Purpose:
+// - Verify jsonl test behavior for package exporter.
 //
-// The JSONL export simply passes through JSONL input with a trailing
-// newline added. It does NOT convert to JSON objects or arrays.
+// Responsibilities:
+// - Define focused Go test coverage, fixtures, and assertions for the package behavior exercised here.
+//
+// Scope:
+// - Automated test coverage only; production behavior stays in non-test package files.
+//
+// Usage:
+// - Run with `go test` for package `exporter` or through `make test-ci`/`make ci`.
+//
+// Invariants/Assumptions:
+// - Tests should remain deterministic and describe the package contract they protect.
+
 package exporter
 
 import (

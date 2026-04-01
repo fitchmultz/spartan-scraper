@@ -1,8 +1,11 @@
 /**
- * Tests for job action functions.
- *
- * Tests job submission and management logic in isolation.
+ * Purpose: Verify job actions behavior with automated regression coverage.
+ * Responsibilities: Define focused test cases, fixtures, and assertions for the module under test.
+ * Scope: Automated test coverage only; production logic stays in the adjacent source modules.
+ * Usage: Run through the repo test entrypoints or the feature-local test command.
+ * Invariants/Assumptions: Tests should describe the current contract clearly and remain deterministic under local CI settings.
  */
+
 import { describe, it, expect, vi } from "vitest";
 import type { ScrapeRequest, CrawlRequest, ResearchRequest } from "../api";
 import {

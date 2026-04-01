@@ -1,11 +1,9 @@
 /**
- * Visual CSS Selector Builder Component
- *
- * Provides a visual, point-and-click interface for building CSS selectors
- * by inspecting remote page DOM structure. Supports selector testing and
- * template creation/editing.
- *
- * @module VisualSelectorBuilder
+ * Purpose: Render the visual selector builder UI surface for the web operator experience.
+ * Responsibilities: Define the component, its local view helpers, and the presentation logic owned by this file.
+ * Scope: File-local UI behavior only; routing, persistence, and broader feature orchestration stay outside this file.
+ * Usage: Import from the surrounding feature or route components that own this surface.
+ * Invariants/Assumptions: Props and callbacks come from the surrounding feature contracts and should remain the single source of truth.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";

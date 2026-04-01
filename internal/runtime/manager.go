@@ -1,3 +1,20 @@
+// Package runtime provides runtime functionality for Spartan Scraper.
+//
+// Purpose:
+// - Implement manager support for package runtime.
+//
+// Responsibilities:
+// - Define the file-local types, functions, and helpers that belong to this package concern.
+//
+// Scope:
+// - Package-internal behavior owned by this file; broader orchestration stays in adjacent package files.
+//
+// Usage:
+// - Used by other files in package `runtime` and any exported callers that depend on this package.
+//
+// Invariants/Assumptions:
+// - This file should preserve the package contract and rely on surrounding package configuration as the source of truth.
+
 /*
 Purpose: Initialize the fully wired runtime job manager used by local execution surfaces.
 Responsibilities: Build fetch/runtime controls, attach optional proxy-pool and AI services, connect store-backed capabilities, and start manager lifecycle processing.

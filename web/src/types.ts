@@ -1,12 +1,11 @@
 /**
- * Shared Type Definitions
- *
- * Centralized type definitions for the web UI. Re-exports common types from the
- * generated API client and defines UI-specific types for result items, evidence,
- * clusters, and citations. Provides type aliases for consistency across components.
- *
- * @module types
+ * Purpose: Define shared type contracts for types.
+ * Responsibilities: Export reusable TypeScript types and aliases that keep the surrounding feature consistent.
+ * Scope: Type-level contracts only; runtime logic stays in implementation modules.
+ * Usage: Import these types from adjacent feature, route, and test modules.
+ * Invariants/Assumptions: The exported types should reflect the current source-of-truth contracts without introducing runtime side effects.
  */
+
 import type {
   Job,
   CrawlState,

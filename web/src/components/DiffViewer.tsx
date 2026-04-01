@@ -1,12 +1,11 @@
 /**
- * Diff Viewer Component
- *
- * Displays side-by-side comparison of two job results with color-coded changes.
- * Shows added, removed, and modified items with detailed field-level diffs for
- * crawl results. Supports filtering by change type and summary statistics.
- *
- * @module DiffViewer
+ * Purpose: Render the diff viewer UI surface for the web operator experience.
+ * Responsibilities: Define the component, its local view helpers, and the presentation logic owned by this file.
+ * Scope: File-local UI behavior only; routing, persistence, and broader feature orchestration stay outside this file.
+ * Usage: Import from the surrounding feature or route components that own this surface.
+ * Invariants/Assumptions: Props and callbacks come from the surrounding feature contracts and should remain the single source of truth.
  */
+
 import { useMemo, useState } from "react";
 import type {
   CrawlDiffResult,

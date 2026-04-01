@@ -1,19 +1,11 @@
 /**
- * Vite configuration for the Spartan web frontend.
- *
- * Configures React plugin, Vitest test environment with jsdom,
- * development server proxy for API endpoints, and optimized build
- * chunking to minimize initial bundle size.
- *
- * Chunking strategy:
- * - vendor-react: React core libraries (always needed)
- * - vendor-ui: UI primitives (cmdk, radix-ui) - needed for interactions
- * - vendor-onboarding: react-joyride and deps - only needed for first-time users
- * - feature-*: Major feature areas split by directory
- * - api: Generated API client code (large types)
- *
- * @module vite.config
+ * Purpose: Provide the vite.config module for this repository.
+ * Responsibilities: Define the file-local logic, exports, and helpers that belong to this module.
+ * Scope: This file only; broader orchestration stays in adjacent modules.
+ * Usage: Import from the owning package or feature surface.
+ * Invariants/Assumptions: The file should stay aligned with surrounding source-of-truth contracts and avoid hidden side effects.
  */
+
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import { chunkNameForModuleId } from "./src/lib/build-chunks";

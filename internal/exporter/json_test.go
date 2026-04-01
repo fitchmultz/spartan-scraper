@@ -1,20 +1,20 @@
-// Tests for JSON export functionality in the exporter package.
+// Package exporter provides exporter functionality for Spartan Scraper.
 //
-// This file tests the Export() and ExportStream() functions with
-// "json" format, covering:
-// - Scrape, Crawl, and Research job kinds
-// - JSON object vs JSON array output
-// - Proper indentation (2-space)
-// - Empty and invalid input handling
-// - Large JSONL lines (up to 500KB)
-// - Blank line handling in crawl results
-// - Unknown job kind errors
+// Purpose:
+// - Verify json test behavior for package exporter.
 //
-// The JSON export converts JSONL input to formatted JSON:
-// - Scrape/Research: single JSON object
-// - Crawl: JSON array of objects
-// - Empty crawl: empty array "[]"
-// - Empty scrape/research: error
+// Responsibilities:
+// - Define focused Go test coverage, fixtures, and assertions for the package behavior exercised here.
+//
+// Scope:
+// - Automated test coverage only; production behavior stays in non-test package files.
+//
+// Usage:
+// - Run with `go test` for package `exporter` or through `make test-ci`/`make ci`.
+//
+// Invariants/Assumptions:
+// - Tests should remain deterministic and describe the package contract they protect.
+
 package exporter
 
 import (

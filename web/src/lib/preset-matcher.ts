@@ -1,11 +1,9 @@
 /**
- * Preset Matcher Utilities
- *
- * URL pattern matching and preset detection for suggesting appropriate
- * job presets based on entered URLs. Supports regex patterns and
- * specificity-based sorting.
- *
- * @module lib/preset-matcher
+ * Purpose: Provide reusable preset matcher helpers for the web app.
+ * Responsibilities: Define pure helpers, adapters, and small utility contracts shared across feature modules.
+ * Scope: Shared helper logic only; route rendering and persistence stay elsewhere.
+ * Usage: Import from adjacent modules that need the helper behavior defined here.
+ * Invariants/Assumptions: Helpers should stay side-effect-light and reflect the current product contracts.
  */
 
 import type { JobPreset } from "../types/presets";

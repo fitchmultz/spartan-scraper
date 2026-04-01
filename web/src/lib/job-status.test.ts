@@ -1,23 +1,11 @@
 /**
- * Shared job status helper tests.
- *
- * Purpose:
- * - Verify the shared job status presentation helpers stay consistent.
- *
- * Responsibilities:
- * - Cover badge-class mappings for job and dependency statuses.
- * - Cover icon mappings for known and unknown job states.
- *
- * Scope:
- * - Unit tests for web/src/lib/job-status.ts only.
- *
- * Usage:
- * - Run through Vitest as part of the web test suite.
- *
- * Invariants/Assumptions:
- * - Waiting states should share the running badge style.
- * - Unknown states should fall back to neutral presentation values.
+ * Purpose: Verify job status behavior with automated regression coverage.
+ * Responsibilities: Define focused test cases, fixtures, and assertions for the module under test.
+ * Scope: Automated test coverage only; production logic stays in the adjacent source modules.
+ * Usage: Run through the repo test entrypoints or the feature-local test command.
+ * Invariants/Assumptions: Tests should describe the current contract clearly and remain deterministic under local CI settings.
  */
+
 import { describe, expect, it } from "vitest";
 
 import { getJobStatusBadgeClass, getJobStatusIcon } from "./job-status";

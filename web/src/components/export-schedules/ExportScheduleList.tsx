@@ -1,15 +1,9 @@
 /**
- * ExportScheduleList Component
- *
- * Renders the table of export schedules with headers and individual rows.
- * Sorts schedules newest-first and delegates row rendering to ExportScheduleListItem.
- *
- * This component does NOT handle:
- * - API calls for export schedule operations
- * - Modal dialogs (those are handled by parent)
- * - Empty or loading states (those are handled by ExportScheduleManager)
- *
- * @module components/export-schedules/ExportScheduleList
+ * Purpose: Render the export schedule list UI surface for the web operator experience.
+ * Responsibilities: Define the component, its local view helpers, and the presentation logic owned by this file.
+ * Scope: File-local UI behavior only; routing, persistence, and broader feature orchestration stay outside this file.
+ * Usage: Import from the surrounding feature or route components that own this surface.
+ * Invariants/Assumptions: Props and callbacks come from the surrounding feature contracts and should remain the single source of truth.
  */
 
 import { useMemo } from "react";

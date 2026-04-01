@@ -1,11 +1,11 @@
 /**
- * Chain Builder Component
- *
- * Provides a form for creating new job chains via JSON input.
- * Includes validation for chain definition structure.
- *
- * @module ChainBuilder
+ * Purpose: Render the chain builder UI surface for the web operator experience.
+ * Responsibilities: Define the component, its local view helpers, and the presentation logic owned by this file.
+ * Scope: File-local UI behavior only; routing, persistence, and broader feature orchestration stay outside this file.
+ * Usage: Import from the surrounding feature or route components that own this surface.
+ * Invariants/Assumptions: Props and callbacks come from the surrounding feature contracts and should remain the single source of truth.
  */
+
 import { useState, useCallback } from "react";
 import type { ChainCreateRequest } from "../api";
 

@@ -1,11 +1,20 @@
-// Package-level test helpers for the exporter package.
+// Package exporter provides exporter functionality for Spartan Scraper.
 //
-// Provides shared test data generators and error types used across
-// all exporter test files. This file exists to reduce duplication
-// and keep test utilities in one place.
+// Purpose:
+// - Verify helpers test behavior for package exporter.
 //
-// This file does NOT contain any test functions itself - only helper
-// functions and types used by other test files.
+// Responsibilities:
+// - Define focused Go test coverage, fixtures, and assertions for the package behavior exercised here.
+//
+// Scope:
+// - Automated test coverage only; production behavior stays in non-test package files.
+//
+// Usage:
+// - Run with `go test` for package `exporter` or through `make test-ci`/`make ci`.
+//
+// Invariants/Assumptions:
+// - Tests should remain deterministic and describe the package contract they protect.
+
 package exporter
 
 import (

@@ -1,26 +1,9 @@
 /**
- * Formatting utilities for shared UI display concerns.
- *
- * Purpose:
- * - Centralize common date, duration, and string truncation behavior.
- *
- * Responsibilities:
- * - Format ISO timestamps for display with safe fallbacks.
- * - Convert second and millisecond durations into compact labels.
- * - Convert second durations into approximate UI-friendly labels.
- * - Render unknown values into readable, UI-safe display strings.
- * - Truncate long identifiers and URLs consistently.
- *
- * Scope:
- * - Stateless presentation helpers for the web client.
- *
- * Usage:
- * - Import from UI components and other lib modules instead of re-implementing
- *   local formatting helpers.
- *
- * Invariants/Assumptions:
- * - Invalid dates fall back to the original input string.
- * - Empty values use explicit caller-provided fallback labels.
+ * Purpose: Provide reusable formatting helpers for the web app.
+ * Responsibilities: Define pure helpers, adapters, and small utility contracts shared across feature modules.
+ * Scope: Shared helper logic only; route rendering and persistence stay elsewhere.
+ * Usage: Import from adjacent modules that need the helper behavior defined here.
+ * Invariants/Assumptions: Helpers should stay side-effect-light and reflect the current product contracts.
  */
 
 export function formatDateTime(

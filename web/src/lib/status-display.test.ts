@@ -1,21 +1,9 @@
 /**
- * Shared status display helper tests.
- *
- * Purpose:
- * - Verify shared tone mappings stay consistent across status surfaces.
- *
- * Responsibilities:
- * - Cover tone palette selection for known status values.
- * - Cover fallback behavior for unknown states.
- *
- * Scope:
- * - Unit tests for web/src/lib/status-display.ts only.
- *
- * Usage:
- * - Run through Vitest as part of the web test suite.
- *
- * Invariants/Assumptions:
- * - Unknown states should not render as success or danger by accident.
+ * Purpose: Verify status display behavior with automated regression coverage.
+ * Responsibilities: Define focused test cases, fixtures, and assertions for the module under test.
+ * Scope: Automated test coverage only; production logic stays in the adjacent source modules.
+ * Usage: Run through the repo test entrypoints or the feature-local test command.
+ * Invariants/Assumptions: Tests should describe the current contract clearly and remain deterministic under local CI settings.
  */
 
 import { describe, expect, it } from "vitest";

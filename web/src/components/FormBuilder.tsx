@@ -1,12 +1,11 @@
 /**
- * Form Builder Component
- *
- * Visual form interaction tool for detecting and filling forms on web pages.
- * Provides URL input, form type filtering, visual form preview, field mapping,
- * and form submission capabilities.
- *
- * @module FormBuilder
+ * Purpose: Render the form builder UI surface for the web operator experience.
+ * Responsibilities: Define the component, its local view helpers, and the presentation logic owned by this file.
+ * Scope: File-local UI behavior only; routing, persistence, and broader feature orchestration stay outside this file.
+ * Usage: Import from the surrounding feature or route components that own this surface.
+ * Invariants/Assumptions: Props and callbacks come from the surrounding feature contracts and should remain the single source of truth.
  */
+
 import { useState } from "react";
 import { client } from "../api/client.gen";
 import {

@@ -1,3 +1,20 @@
+// Package store provides store functionality for Spartan Scraper.
+//
+// Purpose:
+// - Verify storage cutover test behavior for package store.
+//
+// Responsibilities:
+// - Define focused Go test coverage, fixtures, and assertions for the package behavior exercised here.
+//
+// Scope:
+// - Automated test coverage only; production behavior stays in non-test package files.
+//
+// Usage:
+// - Run with `go test` for package `store` or through `make test-ci`/`make ci`.
+//
+// Invariants/Assumptions:
+// - Tests should remain deterministic and describe the package contract they protect.
+
 package store
 
 import (

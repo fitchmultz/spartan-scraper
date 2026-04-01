@@ -1,15 +1,9 @@
 /**
- * WatchList Component
- *
- * Renders the table of watches with headers and individual watch rows.
- * Sorts watches newest-first and delegates row rendering to WatchListItem.
- *
- * This component does NOT handle:
- * - API calls for watch operations
- * - Modal dialogs (those are handled by parent)
- * - Empty or loading states (those are handled by WatchManager)
- *
- * @module components/watches/WatchList
+ * Purpose: Render the watch list UI surface for the web operator experience.
+ * Responsibilities: Define the component, its local view helpers, and the presentation logic owned by this file.
+ * Scope: File-local UI behavior only; routing, persistence, and broader feature orchestration stay outside this file.
+ * Usage: Import from the surrounding feature or route components that own this surface.
+ * Invariants/Assumptions: Props and callbacks come from the surrounding feature contracts and should remain the single source of truth.
  */
 
 import { useMemo } from "react";

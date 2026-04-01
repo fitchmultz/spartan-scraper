@@ -1,10 +1,9 @@
 /**
- * Save Preset Dialog Component
- *
- * Modal dialog for saving current form state as a custom preset.
- * Provides fields for name and description with validation.
- *
- * @module components/SavePresetDialog
+ * Purpose: Render the save preset dialog UI surface for the web operator experience.
+ * Responsibilities: Define the component, its local view helpers, and the presentation logic owned by this file.
+ * Scope: File-local UI behavior only; routing, persistence, and broader feature orchestration stay outside this file.
+ * Usage: Import from the surrounding feature or route components that own this surface.
+ * Invariants/Assumptions: Props and callbacks come from the surrounding feature contracts and should remain the single source of truth.
  */
 
 import { useState, useCallback } from "react";

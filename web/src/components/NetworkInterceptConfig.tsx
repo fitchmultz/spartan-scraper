@@ -1,11 +1,9 @@
 /**
- * Network Intercept Config Component
- *
- * Reusable network interception configuration UI shared across all job forms.
- * Handles enable/disable toggle, URL pattern filtering, resource type selection,
- * and body capture options for capturing network traffic during headless scraping.
- *
- * @module NetworkInterceptConfig
+ * Purpose: Render the network intercept config UI surface for the web operator experience.
+ * Responsibilities: Define the component, its local view helpers, and the presentation logic owned by this file.
+ * Scope: File-local UI behavior only; routing, persistence, and broader feature orchestration stay outside this file.
+ * Usage: Import from the surrounding feature or route components that own this surface.
+ * Invariants/Assumptions: Props and callbacks come from the surrounding feature contracts and should remain the single source of truth.
  */
 
 export interface NetworkInterceptConfigProps {

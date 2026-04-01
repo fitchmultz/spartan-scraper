@@ -1,22 +1,9 @@
 /**
- * Webhook presentation helpers for delivery status and payload rendering.
- *
- * Purpose:
- * - Keep webhook-specific UI formatting logic out of component bodies.
- *
- * Responsibilities:
- * - Map delivery statuses to shared colors and backgrounds.
- * - Safely stringify payloads for debugging surfaces.
- *
- * Scope:
- * - Webhook delivery UI helpers only.
- *
- * Usage:
- * - Import from webhook list/detail components.
- *
- * Invariants/Assumptions:
- * - Unknown statuses use muted styling.
- * - JSON formatting never throws to the caller.
+ * Purpose: Provide reusable webhook utils helpers for the web app.
+ * Responsibilities: Define pure helpers, adapters, and small utility contracts shared across feature modules.
+ * Scope: Shared helper logic only; route rendering and persistence stay elsewhere.
+ * Usage: Import from adjacent modules that need the helper behavior defined here.
+ * Invariants/Assumptions: Helpers should stay side-effect-light and reflect the current product contracts.
  */
 
 export function getDeliveryStatusColor(status?: string): string {

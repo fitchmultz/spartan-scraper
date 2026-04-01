@@ -1,12 +1,11 @@
 /**
- * Job Preset Types
- *
- * Type definitions for job templates and quick-start presets used throughout
- * the web UI. Provides TypeScript interfaces for preset configuration,
- * resource estimation, and URL pattern matching.
- *
- * @module types/presets
+ * Purpose: Define shared type contracts for presets.
+ * Responsibilities: Export reusable TypeScript types and aliases that keep the surrounding feature consistent.
+ * Scope: Type-level contracts only; runtime logic stays in implementation modules.
+ * Usage: Import these types from adjacent feature, route, and test modules.
+ * Invariants/Assumptions: The exported types should reflect the current source-of-truth contracts without introducing runtime side effects.
  */
+
 import type { DeviceEmulation } from "../api";
 
 /**

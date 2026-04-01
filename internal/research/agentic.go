@@ -1,3 +1,20 @@
+// Package research provides research functionality for Spartan Scraper.
+//
+// Purpose:
+// - Implement agentic support for package research.
+//
+// Responsibilities:
+// - Define the file-local types, functions, and helpers that belong to this package concern.
+//
+// Scope:
+// - Package-internal behavior owned by this file; broader orchestration stays in adjacent package files.
+//
+// Usage:
+// - Used by other files in package `research` and any exported callers that depend on this package.
+//
+// Invariants/Assumptions:
+// - This file should preserve the package contract and rely on surrounding package configuration as the source of truth.
+
 package research
 
 import (

@@ -1,23 +1,9 @@
 /**
- * formBuilderUtils.test
- *
- * Purpose:
- * - Verify the form-builder helper functions keep field mapping behavior stable.
- *
- * Responsibilities:
- * - Cover initial field-value generation.
- * - Confirm selected-form submissions exclude empty or unrelated values.
- * - Lock in the shared form-type option list.
- *
- * Scope:
- * - Unit tests for pure form-builder helpers only.
- *
- * Usage:
- * - Run via Vitest as part of frontend validation.
- *
- * Invariants/Assumptions:
- * - Field names are the stable keys used by the form builder UI.
- * - Shared options are intentionally ordered for display.
+ * Purpose: Verify form builder utils behavior with automated regression coverage.
+ * Responsibilities: Define focused test cases, fixtures, and assertions for the module under test.
+ * Scope: Automated test coverage only; production logic stays in the adjacent source modules.
+ * Usage: Run through the repo test entrypoints or the feature-local test command.
+ * Invariants/Assumptions: Tests should describe the current contract clearly and remain deterministic under local CI settings.
  */
 
 import { describe, expect, it } from "vitest";

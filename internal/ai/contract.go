@@ -1,3 +1,20 @@
+// Package ai provides ai functionality for Spartan Scraper.
+//
+// Purpose:
+// - Implement contract support for package ai.
+//
+// Responsibilities:
+// - Define the file-local types, functions, and helpers that belong to this package concern.
+//
+// Scope:
+// - Package-internal behavior owned by this file; broader orchestration stays in adjacent package files.
+//
+// Usage:
+// - Used by other files in package `ai` and any exported callers that depend on this package.
+//
+// Invariants/Assumptions:
+// - This file should preserve the package contract and rely on surrounding package configuration as the source of truth.
+
 package ai
 
 import (

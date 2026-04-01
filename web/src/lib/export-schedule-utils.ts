@@ -1,16 +1,9 @@
 /**
- * Export Schedule Utilities Module
- *
- * Provides helper functions for export schedule-related operations including
- * formatting, data transformation between API types and form data, and default
- * value generation.
- *
- * This module does NOT handle:
- * - React state management or hooks
- * - API calls or network operations
- * - UI rendering or component logic
- *
- * @module lib/export-schedule-utils
+ * Purpose: Provide reusable export schedule utils helpers for the web app.
+ * Responsibilities: Define pure helpers, adapters, and small utility contracts shared across feature modules.
+ * Scope: Shared helper logic only; route rendering and persistence stay elsewhere.
+ * Usage: Import from adjacent modules that need the helper behavior defined here.
+ * Invariants/Assumptions: Helpers should stay side-effect-light and reflect the current product contracts.
  */
 
 import type {

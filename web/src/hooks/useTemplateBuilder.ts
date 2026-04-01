@@ -1,24 +1,9 @@
 /**
- * useTemplateBuilder Hook
- *
- * Purpose:
- * - Manage template editing state and persistence for selector-driven builders.
- *
- * Responsibilities:
- * - Hold editable template state.
- * - Apply selector mutations.
- * - Save templates through the generated API client.
- *
- * Scope:
- * - Local UI state and save behavior for template-building flows.
- *
- * Usage:
- * - Used by visual selector and AI-assisted template editing surfaces.
- *
- * Invariants/Assumptions:
- * - Template names are required before saving.
- * - At least one selector is required for persistence.
- * - Save errors stay local to the hook until cleared or retried.
+ * Purpose: Provide the use template builder hook for the web app.
+ * Responsibilities: Encapsulate reusable state, derived values, and effect wiring for the owning feature.
+ * Scope: Hook-local state orchestration only; rendering stays in calling components.
+ * Usage: Call from React components that need this behavior.
+ * Invariants/Assumptions: Hook inputs remain authoritative and returned state should stay predictable across renders.
  */
 
 import { useState } from "react";

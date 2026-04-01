@@ -1,23 +1,9 @@
 /**
- * Shared status display helpers.
- *
- * Purpose:
- * - Centralize tone and color mapping for compact status-pill UI elements.
- *
- * Responsibilities:
- * - Provide typed status-to-tone helpers for watch and export states.
- * - Expose one shared tone palette for pill-like inline status labels.
- *
- * Scope:
- * - Web UI presentation helpers only.
- *
- * Usage:
- * - Import from shared status-pill components and feature views that need
- *   consistent visual status treatment.
- *
- * Invariants/Assumptions:
- * - Unknown statuses fall back to a neutral tone.
- * - Success, warning, danger, neutral, and info tones share one palette.
+ * Purpose: Provide reusable status display helpers for the web app.
+ * Responsibilities: Define pure helpers, adapters, and small utility contracts shared across feature modules.
+ * Scope: Shared helper logic only; route rendering and persistence stay elsewhere.
+ * Usage: Import from adjacent modules that need the helper behavior defined here.
+ * Invariants/Assumptions: Helpers should stay side-effect-light and reflect the current product contracts.
  */
 
 import type { ExportInspection, Watch, WatchCheckInspection } from "../api";

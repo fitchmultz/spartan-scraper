@@ -1,12 +1,9 @@
 /**
- * Pipeline Options Component
- *
- * Reusable extraction and pipeline configuration UI shared across all job forms.
- * Handles extraction template selection, validation toggles, and processor configuration
- * (pre-processors, post-processors, transformers). Uses inputPrefix to avoid ID collisions
- * when multiple forms are rendered simultaneously.
- *
- * @module PipelineOptions
+ * Purpose: Render the pipeline options UI surface for the web operator experience.
+ * Responsibilities: Define the component, its local view helpers, and the presentation logic owned by this file.
+ * Scope: File-local UI behavior only; routing, persistence, and broader feature orchestration stay outside this file.
+ * Usage: Import from the surrounding feature or route components that own this surface.
+ * Invariants/Assumptions: Props and callbacks come from the surrounding feature contracts and should remain the single source of truth.
  */
 
 interface PipelineOptionsProps {

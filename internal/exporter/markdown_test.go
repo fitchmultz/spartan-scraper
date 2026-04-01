@@ -1,16 +1,20 @@
-// Tests for Markdown export functionality in the exporter package.
+// Package exporter provides exporter functionality for Spartan Scraper.
 //
-// This file tests the Export() and ExportStream() functions with
-// "md" format, covering:
-// - Scrape, Crawl, and Research job kinds
-// - Stable field ordering (alphabetical)
-// - Consistent output across multiple exports
-// - Proper markdown headers and formatting
+// Purpose:
+// - Verify markdown test behavior for package exporter.
 //
-// The Markdown export converts JSONL to formatted Markdown with:
-// - Fields sorted alphabetically for consistency
-// - Normalized fields prefixed with "field_"
-// - H1 headers for scrape/research, H2 for crawl pages
+// Responsibilities:
+// - Define focused Go test coverage, fixtures, and assertions for the package behavior exercised here.
+//
+// Scope:
+// - Automated test coverage only; production behavior stays in non-test package files.
+//
+// Usage:
+// - Run with `go test` for package `exporter` or through `make test-ci`/`make ci`.
+//
+// Invariants/Assumptions:
+// - Tests should remain deterministic and describe the package contract they protect.
+
 package exporter
 
 import (

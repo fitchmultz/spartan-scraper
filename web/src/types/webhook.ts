@@ -1,15 +1,9 @@
 /**
- * Webhook Types Module
- *
- * Centralizes all webhook-related type definitions used across the
- * webhook delivery dashboard components.
- *
- * This module does NOT handle:
- * - API response types (those come from ../api)
- * - Runtime validation or type guards
- * - Business logic or state management
- *
- * @module types/webhook
+ * Purpose: Define shared type contracts for webhook.
+ * Responsibilities: Export reusable TypeScript types and aliases that keep the surrounding feature consistent.
+ * Scope: Type-level contracts only; runtime logic stays in implementation modules.
+ * Usage: Import these types from adjacent feature, route, and test modules.
+ * Invariants/Assumptions: The exported types should reflect the current source-of-truth contracts without introducing runtime side effects.
  */
 
 import type { WebhookDeliveryRecord } from "../api";

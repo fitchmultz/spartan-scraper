@@ -1,23 +1,9 @@
 /**
- * ExportScheduleHistory Component
- *
- * Purpose:
- * - Render guided export outcome inspection for a schedule inside a modal.
- *
- * Responsibilities:
- * - Show export status, narrative, artifact metadata, failures, and next steps.
- * - Preserve offset-based pagination driven by parent callbacks.
- * - Keep history readable even when outcomes include no artifact or failure details.
- *
- * Scope:
- * - Modal presentation only; data loading and pagination state stay in parent components.
- *
- * Usage:
- * - Render from ExportScheduleManager once schedule history has been loaded.
- *
- * Invariants/Assumptions:
- * - Records are already sanitized and transport-safe.
- * - Unknown statuses and failure categories should still render gracefully.
+ * Purpose: Render the export schedule history UI surface for the web operator experience.
+ * Responsibilities: Define the component, its local view helpers, and the presentation logic owned by this file.
+ * Scope: File-local UI behavior only; routing, persistence, and broader feature orchestration stay outside this file.
+ * Usage: Import from the surrounding feature or route components that own this surface.
+ * Invariants/Assumptions: Props and callbacks come from the surrounding feature contracts and should remain the single source of truth.
  */
 
 import type { ExportScheduleHistoryProps } from "../../types/export-schedule";

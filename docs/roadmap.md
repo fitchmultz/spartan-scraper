@@ -23,5 +23,29 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 ## Audit-Derived Follow-up Work (2026-03-30)
 
-Audit snapshot: 156 non-test code files exceed 300 lines, the current Go/TS heuristics found roughly 393 functions over 50 LOC, and 62 tracked code files still miss the required top-of-file purpose header.
+Audit snapshot: 156 non-test code files exceed 300 lines, and the current Go/TS heuristics found roughly 393 functions over 50 LOC.
+
+### Cleanup Batch 2 — High-churn web surface decomposition
+
+Why: Several actively edited operator surfaces are still oversized enough that small UX changes cause high-churn diffs and repeated context loading.
+
+- Split the largest hand-maintained Web UI hotspots into focused controller, section, and helper files without changing route behavior.
+- Prioritize files that are both large and frequently touched in operator workflow work, including `web/src/components/results-explorer/ResultsExplorerPanels.tsx`, `web/src/components/export-schedules/ExportScheduleFormSections.tsx`, `web/src/components/RetentionStatusPanel.tsx`, and `web/src/components/FormBuilder.tsx`.
+- Extract shared presentational blocks and pure helpers only when the split reduces future route-level churn instead of creating extra indirection.
+
+### Cleanup Batch 3 — Backend orchestration file split
+
+Why: Large backend coordinator files concentrate validation, transport, and workflow logic in the same place, which raises regression risk when AI, API, or research flows change.
+
+- Break up oversized backend orchestration files along real responsibility boundaries such as request shaping, provider transport, workflow planning, and response normalization.
+- Start with the highest-signal runtime hotspots from the audit sample, including `internal/aiauthoring/automation.go`, `internal/ai/client.go`, `internal/research/agentic.go`, and `internal/api/ai_extract.go`.
+- Preserve existing contracts and move logic into smaller package-local modules before considering deeper API or model changes.
+
+### Cleanup Batch 4 — Large test surface trimming and fixture reuse
+
+Why: Some of the biggest files in the repo are scenario-heavy tests, and trimming them will make failures easier to localize without weakening coverage.
+
+- Split oversized test files into scenario-focused suites with shared builders/fixtures where that reduces duplication and improves failure locality.
+- Prioritize the largest hand-maintained test hotspots from the audit sample, including `web/src/components/__tests__/FreshStartOperatorFlow.test.tsx`, `web/src/components/templates/__tests__/TemplateManager.test.tsx`, `internal/cli/manage/auth_oauth_test.go`, and `internal/cli/batch/batch_test.go`.
+- Keep end-to-end assertions intact; this batch is about readability, fixture reuse, and lower-churn maintenance rather than changing test scope.
 

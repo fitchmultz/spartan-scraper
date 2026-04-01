@@ -1,25 +1,9 @@
 /**
- * Input parsing utilities for shared form and text processing.
- *
- * Purpose:
- * - Eliminate repeated ad-hoc splitting, trimming, and numeric validation logic
- *   across the web app.
- *
- * Responsibilities:
- * - Split delimited text into trimmed token arrays.
- * - Parse optional numeric inputs with consistent validation.
- * - Convert optional text blobs into list and map structures.
- *
- * Scope:
- * - Stateless parsing helpers for form libraries and components.
- *
- * Usage:
- * - Import from request builders, form adapters, and UI components that parse
- *   textarea or comma-delimited user input.
- *
- * Invariants/Assumptions:
- * - Empty or whitespace-only input returns `undefined` for optional helpers.
- * - Map parsing ignores malformed or blank lines instead of throwing.
+ * Purpose: Provide reusable input parsing helpers for the web app.
+ * Responsibilities: Define pure helpers, adapters, and small utility contracts shared across feature modules.
+ * Scope: Shared helper logic only; route rendering and persistence stay elsewhere.
+ * Usage: Import from adjacent modules that need the helper behavior defined here.
+ * Invariants/Assumptions: Helpers should stay side-effect-light and reflect the current product contracts.
  */
 
 function toOptionalList(items: string[]): string[] | undefined {
