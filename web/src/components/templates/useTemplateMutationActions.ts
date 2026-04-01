@@ -43,16 +43,8 @@ function hasRuleContent(rule: {
   );
 }
 
-export function buildTemplatePayload(draft: TemplateDraftState): {
-  payload?: CreateTemplateRequest;
-  error?: string;
-} {
-  const trimmedName = draft.name.trim();
-  if (!trimmedName) {
-    return { error: "Template name is required." };
-  }
-
-  const selectors = draft.selectors
+function normalizeSelectorRules(draft: TemplateDraftState) {
+  return draft.selectors
     .map(({ rule }) => ({
       ...rule,
       name: rule.name?.trim() ?? "",
@@ -61,18 +53,44 @@ export function buildTemplatePayload(draft: TemplateDraftState): {
       join: rule.join?.trim() || undefined,
     }))
     .filter((rule) => hasRuleContent(rule));
+}
+
+export function getTemplateDraftValidationError(
+  draft: TemplateDraftState,
+): string | null {
+  const trimmedName = draft.name.trim();
+  if (!trimmedName) {
+    return "Template name is required.";
+  }
+
+  const selectors = normalizeSelectorRules(draft);
 
   if (selectors.length === 0) {
-    return { error: "Add at least one selector rule before saving." };
+    return "Add at least one selector rule before saving.";
   }
 
   if (selectors.some((rule) => rule.name.length === 0)) {
-    return { error: "Each selector rule needs a field name." };
+    return "Each selector rule needs a field name.";
   }
 
   if (selectors.some((rule) => rule.selector.length === 0)) {
-    return { error: "Each selector rule needs a CSS selector." };
+    return "Each selector rule needs a CSS selector.";
   }
+
+  return null;
+}
+
+export function buildTemplatePayload(draft: TemplateDraftState): {
+  payload?: CreateTemplateRequest;
+  error?: string;
+} {
+  const trimmedName = draft.name.trim();
+  const validationError = getTemplateDraftValidationError(draft);
+  if (validationError) {
+    return { error: validationError };
+  }
+
+  const selectors = normalizeSelectorRules(draft);
 
   let jsonld: JsonldRule[] | undefined;
   try {

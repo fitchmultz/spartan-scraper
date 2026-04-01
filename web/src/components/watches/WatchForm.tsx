@@ -505,7 +505,20 @@ export function WatchForm({
             )}
           </div>
 
-          <div className="row" style={{ gap: 8, justifyContent: "flex-end" }}>
+          <div
+            className="row"
+            style={{
+              gap: 8,
+              justifyContent: "flex-end",
+              position: "sticky",
+              bottom: 0,
+              zIndex: 10,
+              paddingTop: 16,
+              marginTop: 24,
+              borderTop: "1px solid var(--stroke)",
+              background: "var(--panel)",
+            }}
+          >
             <button
               type="button"
               onClick={onCancel}

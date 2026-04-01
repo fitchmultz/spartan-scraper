@@ -7,6 +7,7 @@
  */
 
 import type { SelectorRule } from "../../api";
+import { getTemplateDraftValidationError } from "./useTemplateMutationActions";
 import type { TemplateDraftState } from "./templateRouteControllerShared";
 
 interface TemplateEditorInlineProps {
@@ -56,6 +57,10 @@ export function TemplateEditorInline({
   closeLabel = "Close",
   discardLabel = "Discard draft",
 }: TemplateEditorInlineProps) {
+  const saveDisabledReason = readOnly
+    ? null
+    : getTemplateDraftValidationError(draft);
+
   return (
     <div className="template-editor-inline">
       <section className="template-editor-inline__section">
@@ -331,13 +336,16 @@ export function TemplateEditorInline({
         </div>
       </section>
 
-      {(error || notice || readOnly) && (
+      {(error || notice || readOnly || saveDisabledReason) && (
         <div className="template-editor-inline__status" aria-live="polite">
           {readOnly ? (
             <span>
               Built-in templates stay read-only in place. Duplicate this
               template to make changes.
             </span>
+          ) : null}
+          {!readOnly && saveDisabledReason ? (
+            <span>{saveDisabledReason}</span>
           ) : null}
           {notice ? <span>{notice}</span> : null}
           {error ? <span className="form-error">{error}</span> : null}
@@ -348,9 +356,11 @@ export function TemplateEditorInline({
         <span className="template-editor-inline__footer-copy">
           {readOnly
             ? "Preview or debug this template, then duplicate it into the workspace when you are ready to edit."
-            : isDirty
-              ? "Unsaved changes stay in the workspace until you explicitly save them."
-              : "Your workspace is up to date."}
+            : saveDisabledReason
+              ? saveDisabledReason
+              : isDirty
+                ? "Unsaved changes stay in the workspace until you explicitly save them."
+                : "Your workspace is up to date."}
         </span>
         <div className="template-editor-inline__footer-actions">
           {!readOnly ? (
@@ -388,7 +398,8 @@ export function TemplateEditorInline({
               type="button"
               className="btn btn--primary"
               onClick={onSave}
-              disabled={isSaving}
+              disabled={isSaving || !!saveDisabledReason}
+              title={saveDisabledReason ?? undefined}
             >
               {isSaving ? "Saving..." : "Save Template"}
             </button>

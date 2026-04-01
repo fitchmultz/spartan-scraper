@@ -14,7 +14,10 @@ import {
   type SelectorDraft,
   type TemplateDraftState,
 } from "./templateRouteControllerShared";
-import { buildTemplatePayload } from "./useTemplateMutationActions";
+import {
+  buildTemplatePayload,
+  getTemplateDraftValidationError,
+} from "./useTemplateMutationActions";
 
 const selectorRule: SelectorRule = {
   name: " title ",
@@ -137,5 +140,45 @@ describe("templateWorkspaceHelpers", () => {
     ).toEqual({
       error: "Normalization settings must be a JSON object.",
     });
+  });
+
+  it("surfaces live validation reasons before save for blank promoted drafts", () => {
+    expect(
+      getTemplateDraftValidationError({
+        ...draft,
+        selectors: [
+          {
+            id: "selector-blank",
+            rule: {
+              name: "",
+              selector: "",
+              attr: "text",
+              trim: true,
+              all: false,
+              required: false,
+            },
+          },
+        ],
+      }),
+    ).toBe("Add at least one selector rule before saving.");
+
+    expect(
+      getTemplateDraftValidationError({
+        ...draft,
+        selectors: [
+          {
+            id: "selector-missing-name",
+            rule: {
+              name: "",
+              selector: "article h1",
+              attr: "text",
+              trim: true,
+              all: false,
+              required: false,
+            },
+          },
+        ],
+      }),
+    ).toBe("Each selector rule needs a field name.");
   });
 });

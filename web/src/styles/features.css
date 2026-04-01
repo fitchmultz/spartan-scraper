@@ -677,11 +677,21 @@
 }
 
 .template-editor-inline__footer {
+  position: sticky;
+  bottom: 12px;
+  z-index: 10;
+  isolation: isolate;
   display: flex;
   justify-content: space-between;
   gap: 12px;
   align-items: center;
   flex-wrap: wrap;
+  padding: 12px 16px;
+  border: 1px solid var(--stroke);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(14px);
 }
 
 .template-editor-inline__status {

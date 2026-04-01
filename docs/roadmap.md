@@ -25,4 +25,24 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 Audit snapshot: 156 non-test code files exceed 300 lines, the current Go/TS heuristics found roughly 393 functions over 50 LOC, and 62 tracked code files still miss the required top-of-file purpose header.
 
+## Manual QA Follow-up Batches (2026-03-31)
+
+### Batch 1 — Operator action visibility and dead-end removal
+
+- Keep the primary commit/submit controls visible on long authoring surfaces instead of hiding them below large forms or assistant rails. The immediate cutover fixed the template workspace plus watch/export dialogs, but the remaining results-route export chooser still needs the same treatment.
+- Ensure every first-run operator path on a 1280×720 laptop-height viewport exposes a visible next action without requiring guesswork about whether the route is blocked or simply farther down the page.
+- Accept this batch only after a fresh manual dogfood pass covers: job detail → export chooser, promoted template authoring, watch creation, and export schedule creation.
+
+### Batch 2 — Promotion guidance for blank template drafts
+
+- Make the “promote to template” path explain blank-draft saves more directly when Spartan cannot safely infer reusable selectors from the source job.
+- Keep save affordances disabled with explicit inline reasons until the minimum valid selector set exists, and make the first reusable rule easier to author from the seeded draft.
+- Dogfood acceptance: start from a plain scrape job, promote to a template draft, and reach a successful save without trial-and-error.
+
+### Batch 3 — Jobs and results surface density cleanup
+
+- Reduce the amount of vertical scanning required before completed-job actions, promotion actions, and export controls become obvious on common laptop viewport heights.
+- Revisit the balance between summary cards, status lanes, and action rails so core “inspect / export / promote” tasks stay above the fold more often after the current Web cutover.
+- Dogfood acceptance: repeated route hopping between `/jobs`, `/jobs/:id`, `/templates`, and `/automation/*` should feel fast and unsurprising on both desktop and mobile-width layouts.
+
 
