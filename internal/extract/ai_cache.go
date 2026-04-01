@@ -70,16 +70,15 @@ func (c *FileAICache) Get(key string) (*AIExtractResult, bool) {
 // Set stores a result in the cache.
 func (c *FileAICache) Set(key string, result *AIExtractResult) {
 	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	c.memory[key] = &cacheEntry{
 		Result:    *result,
 		CreatedAt: time.Now(),
 		KeyHash:   hashKey(key),
 	}
+	c.mu.Unlock()
 
-	// Persist to disk asynchronously
-	go c.saveToDisk()
+	// Persist before returning so callers do not race temp-dir cleanup or follow-up readers.
+	_ = c.saveToDisk()
 }
 
 // GenerateCacheKey creates a deterministic cache key from request and configured route fingerprint.
