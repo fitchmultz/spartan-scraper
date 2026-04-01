@@ -477,6 +477,19 @@ button:disabled {
   color: #1a1200;
 }
 
+@media (max-height: 900px) {
+  .automation-subnav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+  }
+
+  .automation-subnav__link {
+    flex: 0 0 auto;
+  }
+}
+
 /* Focus states for accessibility */
 button:focus-visible,
 input:focus-visible,
@@ -804,6 +817,17 @@ textarea:focus-visible {
 
 .pagination-controls button:not(:disabled):hover {
   background: var(--accent-strong);
+}
+
+@media (max-height: 900px) {
+  .result-items-list {
+    max-height: min(42vh, 420px);
+  }
+
+  .pagination-controls {
+    margin: 12px 0 0;
+    padding: 10px 12px;
+  }
 }
 
 .job-wizard__mode-toggle input {

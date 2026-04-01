@@ -63,6 +63,14 @@ export function AutomationRoute({
   navigate,
   onRefreshJobs,
 }: AutomationRouteProps) {
+  useEffect(() => {
+    if (!section) {
+      return;
+    }
+
+    scrollWindowToTop();
+  }, [section]);
+
   const watchPromotionSeed =
     section === "watches" && promotionSeed?.kind === "watch"
       ? (promotionSeed as WatchPromotionSeed)
@@ -133,6 +141,7 @@ export function AutomationRoute({
             />
           </div>
         }
+        stickyOnShortViewport
       />
 
       <section data-tour="automation-hub">

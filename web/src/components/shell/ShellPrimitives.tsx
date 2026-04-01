@@ -142,19 +142,28 @@ export function AppTopBar<TKind extends string>({
   );
 }
 
+interface RouteHeaderProps {
+  title: string;
+  description?: string;
+  actions?: ReactNode;
+  subnav?: ReactNode;
+  signals?: ReactNode;
+  stickyOnShortViewport?: boolean;
+}
+
 export function RouteHeader({
   title,
   description,
   actions,
   subnav,
-}: {
-  title: string;
-  description?: string;
-  actions?: ReactNode;
-  subnav?: ReactNode;
-}) {
+  signals,
+  stickyOnShortViewport = false,
+}: RouteHeaderProps) {
   return (
-    <section className="route-header" aria-label={`${title} overview`}>
+    <section
+      className={`route-header${stickyOnShortViewport ? " route-header--workspace" : ""}`}
+      aria-label={`${title} overview`}
+    >
       <div className="route-header__title-row">
         <div className="route-header__heading">
           <h1>{title}</h1>
@@ -167,6 +176,7 @@ export function RouteHeader({
       </div>
 
       {subnav ? <div className="route-header__subnav">{subnav}</div> : null}
+      {signals}
     </section>
   );
 }

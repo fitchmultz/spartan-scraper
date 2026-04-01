@@ -25,7 +25,4 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 
 Audit snapshot: 156 non-test code files exceed 300 lines, the current Go/TS heuristics found roughly 393 functions over 50 LOC, and 62 tracked code files still miss the required top-of-file purpose header.
 
-## Manual QA Follow-up Work (2026-03-31)
-
-1. Tighten short-laptop viewport ergonomics across dense operator routes (`/jobs/:id`, `/automation/:section`, and related results-heavy workspaces) so the primary action set, current context, and next-step controls stay visible without excessive vertical hunting. Acceptance should include another manual dogfood pass at common laptop heights, not just desktop-wide screenshots.
 

@@ -1626,6 +1626,42 @@
   }
 }
 
+@media (max-height: 900px) {
+  .results-explorer,
+  .results-viewer,
+  .results-viewer__workspace,
+  .results-viewer__navigator-header,
+  .results-viewer__detail,
+  .automation-hub {
+    gap: 12px;
+  }
+
+  .results-explorer-header,
+  .results-viewer__header {
+    gap: 12px;
+  }
+
+  .results-explorer__promotion-panel,
+  .results-explorer__drawer,
+  .results-explorer__tool-panel,
+  .results-viewer__navigator,
+  .results-viewer__detail-card,
+  .results-viewer__empty-detail,
+  .results-viewer__summary-card {
+    padding: 14px;
+  }
+
+  .results-explorer-header .form-help,
+  .results-viewer__navigator-header .form-help {
+    display: none;
+  }
+
+  .results-explorer__surface-summary {
+    margin-top: 6px;
+    gap: 8px;
+  }
+}
+
 /* Tree View Styles */
 .tree-view {
   outline: none;

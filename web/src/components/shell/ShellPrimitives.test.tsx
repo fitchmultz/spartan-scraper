@@ -8,7 +8,11 @@
 
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { AppTopBar, type AppShellNavItem } from "./ShellPrimitives";
+import {
+  AppTopBar,
+  RouteHeader,
+  type AppShellNavItem,
+} from "./ShellPrimitives";
 
 const navItems: ReadonlyArray<AppShellNavItem<"jobs" | "templates">> = [
   {
@@ -24,6 +28,23 @@ const navItems: ReadonlyArray<AppShellNavItem<"jobs" | "templates">> = [
     description: "Go to templates",
   },
 ];
+
+describe("RouteHeader", () => {
+  it("renders workspace signals inside the sticky route header when requested", () => {
+    render(
+      <RouteHeader
+        title="Automation"
+        stickyOnShortViewport
+        signals={<div>Current section: Watches</div>}
+      />,
+    );
+
+    expect(
+      screen.getByRole("region", { name: "Automation overview" }),
+    ).toHaveClass("route-header--workspace");
+    expect(screen.getByText("Current section: Watches")).toBeInTheDocument();
+  });
+});
 
 describe("AppTopBar", () => {
   it("opens and closes the mobile nav menu around navigation", () => {

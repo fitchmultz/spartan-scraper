@@ -29,12 +29,13 @@ import {
   type RouteSignal,
 } from "../shell/ShellPrimitives";
 import { TemplateManager } from "../templates/TemplateManager";
-import type {
-  JobDetailRouteProps,
-  JobsRouteProps,
-  NewJobRouteProps,
-  PromotionDestination,
-  TemplatesRouteProps,
+import {
+  scrollWindowToTop,
+  type JobDetailRouteProps,
+  type JobsRouteProps,
+  type NewJobRouteProps,
+  type PromotionDestination,
+  type TemplatesRouteProps,
 } from "./routeTypes";
 
 export function JobsRoute({
@@ -112,6 +113,7 @@ export function JobDetailRoute({
   );
 
   useEffect(() => {
+    scrollWindowToTop();
     void loadResults(jobId);
     void refreshJobDetail(jobId);
 
@@ -192,6 +194,10 @@ export function JobDetailRoute({
             Back to Jobs
           </button>
         }
+        signals={
+          <RouteSignals ariaLabel="Result context" items={jobDetailSignals} />
+        }
+        stickyOnShortViewport
       />
 
       {detailJobLoading && !detailJob ? (
@@ -223,8 +229,6 @@ export function JobDetailRoute({
             aiStatus={aiStatus}
             onPromote={handlePromoteJob}
           />
-
-          <RouteSignals ariaLabel="Result context" items={jobDetailSignals} />
 
           <RouteHelpPanel routeKey="job-detail" {...routeHelp} />
         </>
