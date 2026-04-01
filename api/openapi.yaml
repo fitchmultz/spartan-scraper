@@ -3961,11 +3961,6 @@ components:
             - succeeded
             - canceled
           description: Job statuses to match (empty = completed only)
-        tags:
-          type: array
-          items:
-            type: string
-          description: Tags that must all be present on the job
         has_results:
           type: boolean
           description: Only match jobs with non-empty results

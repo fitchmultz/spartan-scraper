@@ -495,6 +495,7 @@ func runWatchStart(ctx context.Context, cfg config.Config, args []string) int {
 
 	// Create dispatcher
 	dispatcher := webhook.NewDispatcher(webhook.Config{})
+	defer dispatcher.Close()
 
 	watcher := watch.NewWatcher(storage, stateStore, cfg.DataDir, dispatcher, &watch.TriggerRuntime{
 		Config:  cfg,

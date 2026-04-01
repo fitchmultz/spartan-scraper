@@ -179,6 +179,7 @@ func TestExportTriggerWebhookExportDeliversViaDispatcher(t *testing.T) {
 		MaxRetries:    1,
 		Timeout:       time.Second,
 	}, deliveryStore)
+	defer dispatcher.Close()
 	trigger := NewExportTrigger(dataDir, store, history, nil, dispatcher)
 
 	received := make(chan receivedExportWebhook, 1)

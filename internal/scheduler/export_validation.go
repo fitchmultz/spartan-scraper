@@ -12,7 +12,7 @@
 //
 // Validation rules:
 // - Name is required and must be non-empty
-// - Filters must specify at least one criteria (job kind, status, or tags)
+// - Filters must specify at least one criteria (job kind, status, or has-results)
 // - Export.Format must be a supported format
 // - Export.DestinationType must be a supported destination
 // - Cloud destinations require valid cloud config
@@ -52,11 +52,10 @@ func ValidateExportSchedule(schedule ExportSchedule) error {
 func ValidateExportFilters(filters ExportFilters) error {
 	hasCriteria := len(filters.JobKinds) > 0 ||
 		len(filters.JobStatus) > 0 ||
-		len(filters.Tags) > 0 ||
 		filters.HasResults
 
 	if !hasCriteria {
-		return apperrors.Validation("at least one filter criteria must be specified (job_kinds, job_status, tags, or has_results)")
+		return apperrors.Validation("at least one filter criteria must be specified (job_kinds, job_status, or has_results)")
 	}
 
 	// Validate job kinds

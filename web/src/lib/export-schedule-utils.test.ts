@@ -37,7 +37,6 @@ describe("defaultFormData", () => {
       enabled: true,
       filterJobKinds: [],
       filterJobStatus: ["completed"],
-      filterTags: "",
       filterHasResults: true,
       format: "json",
       destinationType: "local",
@@ -89,10 +88,9 @@ describe("formatFilters", () => {
       formatFilters({
         job_kinds: ["scrape"],
         job_status: ["completed"],
-        tags: ["prod"],
         has_results: true,
       }),
-    ).toBe("Kinds: scrape | Status: completed | Tags: prod | Has results");
+    ).toBe("Kinds: scrape | Status: completed | Has results");
   });
 });
 
@@ -270,7 +268,6 @@ describe("scheduleToFormData", () => {
       updated_at: "2026-03-10T00:00:00Z",
       filters: {
         job_kinds: ["crawl"],
-        tags: ["prod"],
         has_results: true,
       },
       export: {
@@ -296,7 +293,6 @@ describe("scheduleToFormData", () => {
       enabled: true,
       filterJobKinds: ["crawl"],
       filterJobStatus: ["completed"],
-      filterTags: "prod",
       filterHasResults: true,
       format: "csv",
       destinationType: "local",
@@ -327,7 +323,6 @@ describe("formDataToScheduleRequest", () => {
         enabled: true,
         filterJobKinds: ["scrape"],
         filterJobStatus: ["completed"],
-        filterTags: "prod\ncritical",
         filterHasResults: true,
         format: "json",
         destinationType: "local",
@@ -353,7 +348,6 @@ describe("formDataToScheduleRequest", () => {
       filters: {
         job_kinds: ["scrape"],
         job_status: ["completed"],
-        tags: ["prod", "critical"],
         has_results: true,
       },
       export: {
@@ -372,7 +366,6 @@ describe("formDataToScheduleRequest", () => {
         enabled: true,
         filterJobKinds: [],
         filterJobStatus: [],
-        filterTags: "",
         filterHasResults: false,
         format: "jsonl",
         destinationType: "webhook",

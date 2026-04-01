@@ -1,9 +1,9 @@
-// Package webhook provides tests for dispatcher concurrency limits and semaphore behavior.
+// Package webhook provides tests for dispatcher concurrency limits and bounded queue behavior.
 //
 // Tests cover:
-// - Concurrency limit enforcement (max concurrent dispatches)
-// - Semaphore timeout behavior (dropped webhooks)
-// - Context cancellation during semaphore acquire
+// - Worker concurrency enforcement (max concurrent dispatches)
+// - Queue timeout behavior (dropped webhooks)
+// - Context cancellation while waiting for queue capacity
 // - DroppedCount tracking
 //
 // Does NOT test:
@@ -12,8 +12,8 @@
 // - SSRF protection (see dispatcher_ssrf_test.go)
 //
 // Assumes:
-// - Semaphore has a 5-second timeout for acquiring slots
-// - DroppedCount tracks webhooks dropped due to concurrency limits
+// - Queue wait timeout is 5 seconds in the dispatcher implementation
+// - DroppedCount tracks webhooks dropped due to queue backpressure
 // - Context cancellation prevents counting as dropped
 package webhook
 
@@ -27,7 +27,6 @@ import (
 )
 
 func TestDispatch_ConcurrencyLimit(t *testing.T) {
-	// Create server with delay to keep connections open
 	var activeCount atomic.Int32
 	var maxActive atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -44,102 +43,75 @@ func TestDispatch_ConcurrencyLimit(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := Config{
+	d := newTestDispatcher(t, Config{
 		MaxConcurrentDispatches: 5,
 		AllowInternal:           true,
-	}
-	d := NewDispatcher(cfg)
+	})
+	payload := testPayload()
 
-	payload := Payload{
-		EventID:   "evt-test",
-		EventType: EventJobCompleted,
-		Timestamp: time.Now(),
-		JobID:     "job-test",
-		JobKind:   "scrape",
-		Status:    "succeeded",
-	}
-
-	// Launch 20 concurrent dispatches
 	for i := 0; i < 20; i++ {
 		d.Dispatch(context.Background(), server.URL, payload, "")
 	}
 
-	// Wait for all to complete
-	time.Sleep(1 * time.Second)
+	time.Sleep(time.Second)
 
 	if maxActive.Load() > 5 {
 		t.Errorf("max concurrent %d exceeded limit 5", maxActive.Load())
 	}
 }
 
-func TestDispatch_SemaphoreTimeout(t *testing.T) {
+func TestDispatch_QueueTimeoutDropsWebhook(t *testing.T) {
 	block := make(chan struct{})
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		<-block // Block until released
+		<-block
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
 
-	cfg := Config{
+	d := newTestDispatcher(t, Config{
 		MaxConcurrentDispatches: 1,
+		MaxQueuedDispatches:     1,
 		AllowInternal:           true,
-	}
-	d := NewDispatcher(cfg)
+	})
+	payload := testPayload()
 
-	payload := Payload{
-		EventID:   "evt-test",
-		EventType: EventJobCompleted,
-		Timestamp: time.Now(),
-		JobID:     "job-test",
-		JobKind:   "scrape",
-		Status:    "succeeded",
-	}
-
-	// First dispatch blocks
 	d.Dispatch(context.Background(), server.URL, payload, "")
 	time.Sleep(50 * time.Millisecond)
-
-	// Second dispatch should timeout and be dropped
+	d.Dispatch(context.Background(), server.URL, payload, "")
 	d.Dispatch(context.Background(), server.URL, payload, "")
 
-	// Wait for timeout to occur (5 second timeout in implementation)
 	time.Sleep(5500 * time.Millisecond)
 
 	if d.DroppedCount() != 1 {
 		t.Errorf("expected 1 dropped webhook, got %d", d.DroppedCount())
 	}
+	stats := d.Stats()
+	if stats.QueueCapacity != 1 {
+		t.Fatalf("expected queue capacity 1, got %#v", stats)
+	}
 
 	close(block)
 }
 
-func TestDispatch_ContextCancellationDuringSemaphoreAcquire(t *testing.T) {
+func TestDispatch_ContextCancellationDuringQueueWait(t *testing.T) {
 	block := make(chan struct{})
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		<-block // Block until released
+		<-block
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
 
-	cfg := Config{
+	d := newTestDispatcher(t, Config{
 		MaxConcurrentDispatches: 1,
+		MaxQueuedDispatches:     1,
 		AllowInternal:           true,
-	}
-	d := NewDispatcher(cfg)
+	})
+	payload := testPayload()
 
-	payload := Payload{
-		EventID:   "evt-test",
-		EventType: EventJobCompleted,
-		Timestamp: time.Now(),
-		JobID:     "job-test",
-		JobKind:   "scrape",
-		Status:    "succeeded",
-	}
-
-	// First dispatch blocks
 	d.Dispatch(context.Background(), server.URL, payload, "")
 	time.Sleep(50 * time.Millisecond)
+	d.Dispatch(context.Background(), server.URL, payload, "")
 
-	// Second dispatch with cancellable context
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
 		time.Sleep(100 * time.Millisecond)
@@ -147,11 +119,8 @@ func TestDispatch_ContextCancellationDuringSemaphoreAcquire(t *testing.T) {
 	}()
 
 	d.Dispatch(ctx, server.URL, payload, "")
+	time.Sleep(300 * time.Millisecond)
 
-	// Wait for context cancellation to be processed
-	time.Sleep(200 * time.Millisecond)
-
-	// Should not have dropped (context was cancelled, not timed out)
 	if d.DroppedCount() != 0 {
 		t.Errorf("expected 0 dropped webhooks (context cancelled), got %d", d.DroppedCount())
 	}
@@ -160,7 +129,7 @@ func TestDispatch_ContextCancellationDuringSemaphoreAcquire(t *testing.T) {
 }
 
 func TestDroppedCount_InitialValue(t *testing.T) {
-	d := NewDispatcher(Config{})
+	d := newTestDispatcher(t, Config{})
 
 	if d.DroppedCount() != 0 {
 		t.Errorf("expected initial dropped count 0, got %d", d.DroppedCount())

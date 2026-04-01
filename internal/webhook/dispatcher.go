@@ -38,6 +38,7 @@ import (
 	"net"
 	"net/http"
 	"net/textproto"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -130,6 +131,27 @@ type deliveryRequest struct {
 	Headers     map[string]string
 }
 
+type dispatchTask struct {
+	ctx     context.Context
+	url     string
+	request deliveryRequest
+	secret  string
+	result  chan error
+}
+
+// Stats summarizes dispatcher queue and backpressure state.
+type Stats struct {
+	Workers         int   `json:"workers"`
+	Queued          int   `json:"queued"`
+	QueueCapacity   int   `json:"queueCapacity"`
+	Active          int   `json:"active"`
+	Dropped         int64 `json:"dropped"`
+	MaxRetries      int   `json:"maxRetries"`
+	TimeoutMillis   int64 `json:"timeoutMillis"`
+	AllowInternal   bool  `json:"allowInternal"`
+	QueueWaitMillis int64 `json:"queueWaitMillis"`
+}
+
 // Config for webhook dispatcher.
 type Config struct {
 	// Secret is the default HMAC secret for signature generation (optional).
@@ -154,25 +176,34 @@ type Config struct {
 	// WARNING: Only enable in trusted environments.
 	AllowInternal bool
 
-	// MaxConcurrentDispatches limits the number of concurrent webhook dispatches (default: 100).
-	// When the limit is reached, additional dispatches are dropped with a timeout error.
+	// MaxConcurrentDispatches limits the number of concurrent webhook workers (default: 100).
 	MaxConcurrentDispatches int
+
+	// MaxQueuedDispatches bounds the number of deliveries waiting behind active workers.
+	// Defaults to 4x MaxConcurrentDispatches.
+	MaxQueuedDispatches int
 }
 
 // Dispatcher manages webhook delivery with retry logic.
 type Dispatcher struct {
-	secret        string
-	maxRetries    int
-	baseDelay     time.Duration
-	maxDelay      time.Duration
-	timeout       time.Duration
-	allowInternal bool
-	store         *Store
-	resolver      ipResolver
-	dialContext   dialContextFunc
-	tlsConfig     *tls.Config
-	sem           chan struct{} // Semaphore channel for concurrency control
-	droppedCount  atomic.Int64  // Counter for dropped webhooks due to concurrency limit
+	secret           string
+	maxRetries       int
+	baseDelay        time.Duration
+	maxDelay         time.Duration
+	timeout          time.Duration
+	allowInternal    bool
+	store            *Store
+	resolver         ipResolver
+	dialContext      dialContextFunc
+	tlsConfig        *tls.Config
+	workers          int
+	queue            chan dispatchTask
+	queueWaitTimeout time.Duration
+	activeCount      atomic.Int64
+	droppedCount     atomic.Int64
+	stopCh           chan struct{}
+	stopOnce         sync.Once
+	wg               sync.WaitGroup
 }
 
 // NewDispatcher creates a new webhook dispatcher with the given configuration.
@@ -203,21 +234,33 @@ func NewDispatcher(cfg Config) *Dispatcher {
 		maxConcurrent = 100
 	}
 
-	baseDialer := &net.Dialer{Timeout: timeout}
-
-	return &Dispatcher{
-		secret:        cfg.Secret,
-		maxRetries:    maxRetries,
-		baseDelay:     baseDelay,
-		maxDelay:      maxDelay,
-		timeout:       timeout,
-		allowInternal: cfg.AllowInternal,
-		store:         nil,
-		resolver:      systemIPResolver{resolver: net.DefaultResolver},
-		dialContext:   baseDialer.DialContext,
-		tlsConfig:     nil,
-		sem:           make(chan struct{}, maxConcurrent),
+	maxQueued := cfg.MaxQueuedDispatches
+	if maxQueued <= 0 {
+		maxQueued = maxConcurrent * 4
 	}
+
+	baseDialer := &net.Dialer{Timeout: timeout}
+	d := &Dispatcher{
+		secret:           cfg.Secret,
+		maxRetries:       maxRetries,
+		baseDelay:        baseDelay,
+		maxDelay:         maxDelay,
+		timeout:          timeout,
+		allowInternal:    cfg.AllowInternal,
+		store:            nil,
+		resolver:         systemIPResolver{resolver: net.DefaultResolver},
+		dialContext:      baseDialer.DialContext,
+		tlsConfig:        nil,
+		workers:          maxConcurrent,
+		queue:            make(chan dispatchTask, maxQueued),
+		queueWaitTimeout: 5 * time.Second,
+		stopCh:           make(chan struct{}),
+	}
+	for i := 0; i < d.workers; i++ {
+		d.wg.Add(1)
+		go d.runWorker()
+	}
+	return d
 }
 
 // NewDispatcherWithStore creates a new webhook dispatcher with the given configuration and store.
@@ -235,34 +278,57 @@ func (d *Dispatcher) Store() *Store {
 }
 
 // Dispatch sends a JSON webhook notification asynchronously.
-// It executes in a goroutine and returns immediately.
 // The secret parameter overrides the dispatcher's default secret if non-empty.
 // URLs are validated against SSRF attacks before dispatching.
-// When the concurrency limit is reached, dispatches are dropped after a timeout.
+// When the queue stays full beyond the wait timeout, dispatches are dropped.
 func (d *Dispatcher) Dispatch(ctx context.Context, url string, payload Payload, secret string) {
-	go func() {
-		_ = d.Deliver(ctx, url, payload, secret)
-	}()
+	request, err := jsonDeliveryRequest(payload)
+	if err != nil {
+		slog.Warn("webhook dispatch request build failed",
+			"jobID", payload.JobID,
+			"eventType", payload.EventType,
+			"error", err)
+		return
+	}
+	if err := d.submit(ctx, url, request, secret, false); err != nil {
+		slog.Warn("webhook dispatch enqueue failed",
+			"jobID", request.JobID,
+			"eventType", request.EventType,
+			"url", SanitizeURL(url),
+			"error", apperrors.SafeMessage(err))
+	}
 }
 
 // Deliver sends a JSON webhook notification synchronously and returns the delivery result.
 // The secret parameter overrides the dispatcher's default secret if non-empty.
 // URLs are validated against SSRF attacks before dispatching.
-// When the concurrency limit is reached, delivery fails after a timeout.
+// When the queue stays full beyond the wait timeout, delivery fails.
 func (d *Dispatcher) Deliver(ctx context.Context, url string, payload Payload, secret string) error {
 	request, err := jsonDeliveryRequest(payload)
 	if err != nil {
 		return err
 	}
-	return d.deliverRequest(ctx, url, request, secret)
+	return d.submit(ctx, url, request, secret, true)
 }
 
 // DispatchExport sends an export-completed webhook asynchronously using the shared
 // multipart export-delivery contract.
 func (d *Dispatcher) DispatchExport(ctx context.Context, url string, payload Payload, content []byte, secret string) {
-	go func() {
-		_ = d.DeliverExport(ctx, url, payload, content, secret)
-	}()
+	request, err := exportDeliveryRequest(payload, content)
+	if err != nil {
+		slog.Warn("export webhook dispatch request build failed",
+			"jobID", payload.JobID,
+			"eventType", payload.EventType,
+			"error", err)
+		return
+	}
+	if err := d.submit(ctx, url, request, secret, false); err != nil {
+		slog.Warn("export webhook dispatch enqueue failed",
+			"jobID", request.JobID,
+			"eventType", request.EventType,
+			"url", SanitizeURL(url),
+			"error", apperrors.SafeMessage(err))
+	}
 }
 
 // DeliverExport sends an export-completed webhook synchronously using the shared
@@ -272,14 +338,72 @@ func (d *Dispatcher) DeliverExport(ctx context.Context, url string, payload Payl
 	if err != nil {
 		return err
 	}
-	return d.deliverRequest(ctx, url, request, secret)
+	return d.submit(ctx, url, request, secret, true)
 }
 
-func (d *Dispatcher) deliverRequest(ctx context.Context, url string, request deliveryRequest, secret string) error {
+func (d *Dispatcher) submit(ctx context.Context, url string, request deliveryRequest, secret string, wait bool) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 
+	task := dispatchTask{
+		ctx:     ctx,
+		url:     url,
+		request: request,
+		secret:  secret,
+	}
+	if wait {
+		task.result = make(chan error, 1)
+	}
+
+	timer := time.NewTimer(d.queueWaitTimeout)
+	defer timer.Stop()
+
+	select {
+	case <-d.stopCh:
+		return apperrors.Internal("webhook dispatcher is closed")
+	case <-ctx.Done():
+		return ctx.Err()
+	case d.queue <- task:
+		if !wait {
+			return nil
+		}
+	case <-timer.C:
+		d.droppedCount.Add(1)
+		err := apperrors.Internal("webhook dispatch queue is full")
+		slog.Error("webhook dispatch dropped - queue full",
+			"jobID", request.JobID,
+			"eventType", request.EventType,
+			"url", SanitizeURL(url))
+		return err
+	}
+
+	select {
+	case <-d.stopCh:
+		return apperrors.Internal("webhook dispatcher is closed")
+	case <-ctx.Done():
+		return ctx.Err()
+	case err := <-task.result:
+		return err
+	}
+}
+
+func (d *Dispatcher) runWorker() {
+	defer d.wg.Done()
+	for {
+		select {
+		case <-d.stopCh:
+			return
+		case task := <-d.queue:
+			err := d.executeDelivery(task.ctx, task.url, task.request, task.secret)
+			if task.result != nil {
+				task.result <- err
+			}
+		}
+	}
+}
+
+func (d *Dispatcher) executeDelivery(ctx context.Context, url string, request deliveryRequest, secret string) error {
 	target, err := resolveDeliveryTarget(ctx, url, d.allowInternal, d.resolver)
 	if err != nil {
 		slog.Error("webhook URL failed validation",
@@ -289,11 +413,8 @@ func (d *Dispatcher) deliverRequest(ctx context.Context, url string, request del
 		return err
 	}
 
-	release, err := d.acquireDispatchSlot(ctx, request, url)
-	if err != nil {
-		return err
-	}
-	defer release()
+	d.activeCount.Add(1)
+	defer d.activeCount.Add(-1)
 
 	client, closeClient := d.clientForTarget(target)
 	defer closeClient()
@@ -303,29 +424,6 @@ func (d *Dispatcher) deliverRequest(ctx context.Context, url string, request del
 
 func (d *Dispatcher) clientForTarget(target deliveryTarget) (*http.Client, func()) {
 	return newPinnedHTTPClient(d.timeout, target, d.dialContext, d.tlsConfig)
-}
-
-func (d *Dispatcher) acquireDispatchSlot(ctx context.Context, request deliveryRequest, url string) (func(), error) {
-	timer := time.NewTimer(5 * time.Second)
-	defer timer.Stop()
-
-	select {
-	case d.sem <- struct{}{}:
-		return func() { <-d.sem }, nil
-	case <-ctx.Done():
-		slog.Warn("webhook dispatch canceled - context done",
-			"jobID", request.JobID,
-			"eventType", request.EventType)
-		return nil, ctx.Err()
-	case <-timer.C:
-		d.droppedCount.Add(1)
-		err := apperrors.Internal("webhook dispatch concurrency limit reached")
-		slog.Error("webhook dispatch dropped - concurrency limit reached",
-			"jobID", request.JobID,
-			"eventType", request.EventType,
-			"url", SanitizeURL(url))
-		return nil, err
-	}
 }
 
 func jsonDeliveryRequest(payload Payload) (deliveryRequest, error) {
@@ -401,9 +499,44 @@ func exportDeliveryRequest(payload Payload, content []byte) (deliveryRequest, er
 	}, nil
 }
 
-// DroppedCount returns the number of webhooks dropped due to concurrency limit.
+// Stats returns the current dispatcher queue and backpressure metrics.
+func (d *Dispatcher) Stats() Stats {
+	return Stats{
+		Workers:         d.workers,
+		Queued:          len(d.queue),
+		QueueCapacity:   cap(d.queue),
+		Active:          int(d.activeCount.Load()),
+		Dropped:         d.droppedCount.Load(),
+		MaxRetries:      d.maxRetries,
+		TimeoutMillis:   d.timeout.Milliseconds(),
+		AllowInternal:   d.allowInternal,
+		QueueWaitMillis: d.queueWaitTimeout.Milliseconds(),
+	}
+}
+
+// DroppedCount returns the number of webhooks dropped due to queue backpressure.
 func (d *Dispatcher) DroppedCount() int64 {
 	return d.droppedCount.Load()
+}
+
+// Close stops accepting new deliveries, drains queued sync callers with an error,
+// and waits for active workers to finish.
+func (d *Dispatcher) Close() error {
+	d.stopOnce.Do(func() {
+		close(d.stopCh)
+		for {
+			select {
+			case task := <-d.queue:
+				if task.result != nil {
+					task.result <- apperrors.Internal("webhook dispatcher is closed")
+				}
+			default:
+				return
+			}
+		}
+	})
+	d.wg.Wait()
+	return nil
 }
 
 // dispatchWithRetry attempts delivery with exponential backoff.

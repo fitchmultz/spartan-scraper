@@ -64,6 +64,13 @@ func TestHealth(t *testing.T) {
 	if _, ok := health.Components["queue"]; !ok {
 		t.Fatalf("expected queue component in health response")
 	}
+	webhook, ok := health.Components["webhook"]
+	if !ok {
+		t.Fatalf("expected webhook component in health response")
+	}
+	if webhook.Status != "disabled" {
+		t.Fatalf("expected disabled webhook component by default, got %#v", webhook)
+	}
 	if _, ok := health.Components["ai"]; !ok {
 		t.Fatalf("expected ai component in health response")
 	}
@@ -306,7 +313,7 @@ func TestSetupServerHealthIncludesOptionalSubsystems(t *testing.T) {
 	}
 
 	health := decodeHealthResponse(t, rr)
-	for _, name := range []string{"database", "queue", "browser", "ai", "proxy_pool"} {
+	for _, name := range []string{"database", "queue", "webhook", "browser", "ai", "proxy_pool"} {
 		if _, ok := health.Components[name]; !ok {
 			t.Fatalf("expected %s component in setup-mode health payload", name)
 		}

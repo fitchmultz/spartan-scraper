@@ -226,11 +226,6 @@ func (et *ExportTrigger) matchSchedule(job *model.Job, schedule *ExportSchedule)
 		}
 	}
 
-	// Check tags (all specified tags must be present)
-	if len(filters.Tags) > 0 {
-		return false
-	}
-
 	// Check has_results
 	if filters.HasResults {
 		if job.ResultPath == "" {

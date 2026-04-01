@@ -4,6 +4,7 @@
 // - Default configuration values
 // - Custom configuration values
 // - MaxConcurrentDispatches validation (zero, negative, positive values)
+// - Derived queue-capacity defaults for the bounded worker queue
 //
 // Does NOT test:
 // - Actual dispatch behavior (see dispatcher_success_test.go, dispatcher_retry_test.go)
@@ -20,7 +21,7 @@ import (
 )
 
 func TestNewDispatcher_Defaults(t *testing.T) {
-	d := NewDispatcher(Config{})
+	d := newTestDispatcher(t, Config{})
 
 	if d.maxRetries != 3 {
 		t.Errorf("expected maxRetries=3, got %d", d.maxRetries)
@@ -48,7 +49,7 @@ func TestNewDispatcher_CustomValues(t *testing.T) {
 		Timeout:       10 * time.Second,
 		AllowInternal: true,
 	}
-	d := NewDispatcher(cfg)
+	d := newTestDispatcher(t, cfg)
 
 	if d.maxRetries != 5 {
 		t.Errorf("expected maxRetries=5, got %d", d.maxRetries)
@@ -71,36 +72,37 @@ func TestNewDispatcher_CustomValues(t *testing.T) {
 }
 
 func TestNewDispatcher_DefaultMaxConcurrent(t *testing.T) {
-	d := NewDispatcher(Config{})
-
-	// Default should be 100
-	if cap(d.sem) != 100 {
-		t.Errorf("expected default maxConcurrent=100, got %d", cap(d.sem))
+	d := newTestDispatcher(t, Config{})
+	stats := d.Stats()
+	if stats.Workers != 100 {
+		t.Errorf("expected default maxConcurrent=100, got %d", stats.Workers)
+	}
+	if stats.QueueCapacity != 400 {
+		t.Errorf("expected default queue capacity=400, got %d", stats.QueueCapacity)
 	}
 }
 
 func TestNewDispatcher_CustomMaxConcurrent(t *testing.T) {
-	d := NewDispatcher(Config{MaxConcurrentDispatches: 50})
-
-	if cap(d.sem) != 50 {
-		t.Errorf("expected maxConcurrent=50, got %d", cap(d.sem))
+	d := newTestDispatcher(t, Config{MaxConcurrentDispatches: 50})
+	stats := d.Stats()
+	if stats.Workers != 50 {
+		t.Errorf("expected maxConcurrent=50, got %d", stats.Workers)
+	}
+	if stats.QueueCapacity != 200 {
+		t.Errorf("expected queue capacity=200, got %d", stats.QueueCapacity)
 	}
 }
 
 func TestNewDispatcher_ZeroMaxConcurrentUsesDefault(t *testing.T) {
-	d := NewDispatcher(Config{MaxConcurrentDispatches: 0})
-
-	// Zero should use default of 100
-	if cap(d.sem) != 100 {
-		t.Errorf("expected default maxConcurrent=100 when 0, got %d", cap(d.sem))
+	d := newTestDispatcher(t, Config{MaxConcurrentDispatches: 0})
+	if got := d.Stats().Workers; got != 100 {
+		t.Errorf("expected default maxConcurrent=100 when 0, got %d", got)
 	}
 }
 
 func TestNewDispatcher_NegativeMaxConcurrentUsesDefault(t *testing.T) {
-	d := NewDispatcher(Config{MaxConcurrentDispatches: -5})
-
-	// Negative should use default of 100
-	if cap(d.sem) != 100 {
-		t.Errorf("expected default maxConcurrent=100 when negative, got %d", cap(d.sem))
+	d := newTestDispatcher(t, Config{MaxConcurrentDispatches: -5})
+	if got := d.Stats().Workers; got != 100 {
+		t.Errorf("expected default maxConcurrent=100 when negative, got %d", got)
 	}
 }

@@ -165,13 +165,6 @@ func TestValidateExportFilters(t *testing.T) {
 			},
 			wantError: false,
 		},
-		{
-			name: "tags only",
-			filters: ExportFilters{
-				Tags: []string{"production"},
-			},
-			wantError: false,
-		},
 	}
 
 	for _, tt := range tests {

@@ -69,10 +69,6 @@ export type ExportFilters = {
      */
     job_status?: Array<'completed' | 'failed' | 'succeeded' | 'canceled'>;
     /**
-     * Tags that must all be present on the job
-     */
-    tags?: Array<string>;
-    /**
      * Only match jobs with non-empty results
      */
     has_results?: boolean;

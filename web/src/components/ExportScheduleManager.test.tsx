@@ -195,7 +195,6 @@ describe("ExportScheduleManager", () => {
             enabled: true,
             filterJobKinds: ["scrape"],
             filterJobStatus: ["succeeded"],
-            filterTags: "",
             filterHasResults: true,
             format: "md",
             destinationType: "local",

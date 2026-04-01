@@ -51,6 +51,7 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 			Status:  "setup_required",
 			Message: "Job processing stays unavailable until setup is completed.",
 		}
+		res.Components["webhook"] = s.webhookHealthStatus()
 		res.Components["browser"] = s.browserHealthStatus()
 		res.Components["ai"] = s.aiHealthStatus(ctx)
 		res.Components["proxy_pool"] = s.proxyPoolHealthStatus()
@@ -103,6 +104,12 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	webhookStatus := s.webhookHealthStatus()
+	if webhookStatus.Status == "degraded" {
+		hasDegraded = true
+	}
+	res.Components["webhook"] = webhookStatus
+
 	browserStatus := s.browserHealthStatus()
 	if browserStatus.Status == "degraded" {
 		hasDegraded = true
@@ -137,6 +144,27 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) browserHealthStatus() ComponentStatus {
 	return BuildBrowserComponentStatus(s.cfg)
+}
+
+func (s *Server) webhookHealthStatus() ComponentStatus {
+	if s.webhookDispatcher == nil {
+		return ComponentStatus{
+			Status:  "disabled",
+			Message: "Webhook delivery is disabled.",
+		}
+	}
+	stats := s.webhookDispatcher.Stats()
+	status := "ok"
+	message := "Webhook dispatcher is ready."
+	if stats.Dropped > 0 {
+		status = "degraded"
+		message = "Webhook dispatcher has dropped deliveries due to queue backpressure."
+	}
+	return ComponentStatus{
+		Status:  status,
+		Message: message,
+		Details: stats,
+	}
 }
 
 func (s *Server) aiHealthStatus(ctx context.Context) ComponentStatus {

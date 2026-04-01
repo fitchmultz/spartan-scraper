@@ -344,8 +344,9 @@ func (m *Manager) UnsubscribeFromEvents(ch chan<- JobEvent) {
 // the manager lifecycle context.
 func (m *Manager) publishEvent(event JobEvent) {
 	m.subscribersMu.RLock()
-	defer m.subscribersMu.RUnlock()
-	for _, ch := range m.eventSubscribers {
+	subscribers := append([]chan<- JobEvent(nil), m.eventSubscribers...)
+	m.subscribersMu.RUnlock()
+	for _, ch := range subscribers {
 		select {
 		case ch <- event:
 		default:
@@ -353,14 +354,14 @@ func (m *Manager) publishEvent(event JobEvent) {
 		}
 	}
 
-	// Dispatch webhook if configured
+	// Dispatch webhook if configured.
 	if m.webhookDispatcher != nil {
 		if cfg := event.Job.ExtractWebhookConfig(); cfg != nil {
 			m.dispatchWebhook(event, cfg)
 		}
 	}
 
-	// Notify export trigger if configured
+	// Notify export trigger if configured.
 	if m.exportTrigger != nil {
 		m.exportTrigger.HandleJobEvent(event)
 	}
@@ -401,13 +402,7 @@ func (m *Manager) dispatchWebhook(event JobEvent, cfg *model.WebhookSpec) {
 		payload.ResultURL = "/v1/jobs/" + event.Job.ID + "/results"
 	}
 
-	if err := m.webhookDispatcher.Deliver(m.runtimeContext(), cfg.URL, payload, cfg.Secret); err != nil {
-		slog.Warn("job webhook delivery failed",
-			"jobID", event.Job.ID,
-			"eventType", eventType,
-			"url", webhook.SanitizeURL(cfg.URL),
-			"error", apperrors.SafeMessage(err))
-	}
+	m.webhookDispatcher.Dispatch(m.runtimeContext(), cfg.URL, payload, cfg.Secret)
 }
 
 // SetWebhookDispatcher sets the webhook dispatcher for the manager.

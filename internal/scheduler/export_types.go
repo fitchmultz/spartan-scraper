@@ -16,7 +16,7 @@
 //
 // Invariants/Assumptions:
 // - ExportSchedule IDs are UUIDs generated on creation.
-// - Filters must specify at least one criteria (job kind, status, or tags).
+// - Filters must specify at least one criteria (job kind, status, or has-results).
 // - ExportConfig.Format is one of json, jsonl, md, csv, or xlsx.
 // - ExportConfig.DestinationType is either local or webhook.
 // - ExportConfig.Shape and ExportConfig.Transform are mutually exclusive.
@@ -57,10 +57,6 @@ type ExportFilters struct {
 	// JobStatus filters by terminal job status (completed, failed).
 	// Empty defaults to ["completed"].
 	JobStatus []string `json:"job_status,omitempty"`
-
-	// Tags filters by job tags. All specified tags must be present (AND logic).
-	// Empty means no tag filtering.
-	Tags []string `json:"tags,omitempty"`
 
 	// HasResults when true, only exports jobs with non-empty results.
 	HasResults bool `json:"has_results,omitempty"`

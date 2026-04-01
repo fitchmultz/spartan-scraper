@@ -19,7 +19,6 @@ import {
   JOB_STATUS_OPTIONS,
   sectionStyle,
   sectionTitleStyle,
-  codeTextareaStyle,
 } from "./exportScheduleFormShared";
 
 export function ExportScheduleDialogShell({
@@ -222,20 +221,6 @@ export function ExportScheduleFiltersSection({
             </label>
           ))}
         </div>
-      </div>
-
-      <div style={{ marginBottom: 16 }}>
-        <label htmlFor="filter-tags" style={fieldLabelStyle}>
-          Tags (one per line, all must match)
-        </label>
-        <textarea
-          id="filter-tags"
-          value={formData.filterTags}
-          onChange={(event) => onChange({ filterTags: event.target.value })}
-          placeholder="production&#10;critical"
-          rows={2}
-          style={codeTextareaStyle}
-        />
       </div>
 
       <label style={{ display: "flex", alignItems: "center", gap: 8 }}>

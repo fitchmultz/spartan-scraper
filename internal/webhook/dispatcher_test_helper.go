@@ -7,6 +7,7 @@
 package webhook
 
 import (
+	"testing"
 	"time"
 )
 
@@ -33,4 +34,15 @@ func testPayloadWithEvent(eventType EventType, status string) Payload {
 		JobKind:   "scrape",
 		Status:    status,
 	}
+}
+
+func newTestDispatcher(t *testing.T, cfg Config) *Dispatcher {
+	t.Helper()
+	d := NewDispatcher(cfg)
+	t.Cleanup(func() {
+		if err := d.Close(); err != nil {
+			t.Fatalf("Close() failed: %v", err)
+		}
+	})
+	return d
 }

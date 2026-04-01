@@ -205,6 +205,12 @@ func (s *Server) Stop() {
 	if s.analyticsCollector != nil {
 		s.analyticsCollector.Stop()
 	}
+
+	if s.webhookDispatcher != nil {
+		if err := s.webhookDispatcher.Close(); err != nil {
+			slog.Warn("failed to stop webhook dispatcher", "error", err)
+		}
+	}
 }
 
 // startMetricsBroadcast periodically broadcasts metrics via WebSocket

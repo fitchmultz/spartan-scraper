@@ -38,7 +38,6 @@ export const defaultFormData: ExportScheduleFormData = {
   enabled: true,
   filterJobKinds: [],
   filterJobStatus: ["completed"],
-  filterTags: "",
   filterHasResults: true,
   format: "json",
   destinationType: "local",
@@ -96,10 +95,6 @@ export function formatFilters(filters: ExportFilters | undefined): string {
 
   if (filters.job_status?.length) {
     parts.push(`Status: ${filters.job_status.join(", ")}`);
-  }
-
-  if (filters.tags?.length) {
-    parts.push(`Tags: ${filters.tags.join(", ")}`);
   }
 
   if (filters.has_results) {
@@ -399,7 +394,6 @@ export function scheduleToFormData(
     enabled: schedule.enabled ?? true,
     filterJobKinds: filters.job_kinds || [],
     filterJobStatus: filters.job_status || ["completed"],
-    filterTags: filters.tags?.join("\n") || "",
     filterHasResults: filters.has_results ?? true,
     format: (export_.format as ExportScheduleFormData["format"]) || "json",
     destinationType:
@@ -464,10 +458,6 @@ function buildFilters(data: ExportScheduleFormData): ExportFilters {
 
   if (data.filterJobStatus.length) {
     filters.job_status = data.filterJobStatus;
-  }
-
-  if (data.filterTags.trim()) {
-    filters.tags = parseOptionalList(data.filterTags, "\n");
   }
 
   filters.has_results = data.filterHasResults;

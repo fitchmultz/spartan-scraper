@@ -47,7 +47,6 @@ export interface ExportScheduleFormData {
   // Filters
   filterJobKinds: Array<"scrape" | "crawl" | "research">;
   filterJobStatus: Array<"completed" | "failed" | "succeeded" | "canceled">;
-  filterTags: string; // newline-separated for textarea
   filterHasResults: boolean;
   // Export
   format: "json" | "jsonl" | "md" | "csv" | "xlsx";

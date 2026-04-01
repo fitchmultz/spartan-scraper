@@ -90,7 +90,6 @@ func addExportSchedule(cfg config.Config, args []string) int {
 	name := fs.String("name", "", "Schedule name (required)")
 	filterKinds := fs.String("filter-kinds", "", "Comma-separated job kinds (scrape,crawl,research)")
 	filterStatus := fs.String("filter-status", "completed", "Comma-separated statuses (completed,failed,succeeded,canceled)")
-	filterTags := fs.String("filter-tags", "", "Comma-separated tags to filter by")
 	filterHasResults := fs.Bool("filter-has-results", false, "Only export jobs with non-empty results")
 	format := fs.String("format", "", "Export format: json,jsonl,md,csv,xlsx (required)")
 	destination := fs.String("destination", "", "Destination type: local,webhook (required)")
@@ -125,9 +124,6 @@ func addExportSchedule(cfg config.Config, args []string) int {
 	}
 	if *filterStatus != "" {
 		filters.JobStatus = splitAndTrim(*filterStatus, ",")
-	}
-	if *filterTags != "" {
-		filters.Tags = splitAndTrim(*filterTags, ",")
 	}
 
 	// Build export config
@@ -215,9 +211,6 @@ func getExportSchedule(cfg config.Config, args []string) int {
 	}
 	if len(schedule.Filters.JobStatus) > 0 {
 		fmt.Printf("  Job Status: %s\n", strings.Join(schedule.Filters.JobStatus, ", "))
-	}
-	if len(schedule.Filters.Tags) > 0 {
-		fmt.Printf("  Tags: %s\n", strings.Join(schedule.Filters.Tags, ", "))
 	}
 	if schedule.Filters.HasResults {
 		fmt.Println("  Has Results: yes")
