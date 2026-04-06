@@ -11,7 +11,7 @@ This document describes the local release process for Spartan Scraper.
 ## Prerequisites
 
 - Toolchain installed per `.tool-versions` and verified with `make verify-toolchain`.
-- Clean working tree (`git status` shows no unstaged/uncommitted changes).
+- Clean release-candidate tree (`git status` shows no unstaged/uncommitted changes in the checkout/worktree used for tagging`). If your day-to-day workspace has unrelated in-flight edits, create a clean git worktree from the real repository/branch and run `make ci-pr`, `make ci`, `make ci-slow`, and tagging there. Do not use a synthetic temporary git repo for those history-backed checks because `audit-public` and `secret-scan` must see the real branch history.
 - Local CI is green (`make ci-pr`, `make ci`, and `make ci-slow`).
 - `docs/validation_checklist.md` has been walked on a fresh data directory.
 
@@ -33,6 +33,8 @@ This document describes the local release process for Spartan Scraper.
    Run `make ci-network` separately only if you want an optional live-Internet smoke pass before a public tag.
 
 3. **Run deep history secret scan (manual release-tier check)**
+
+   Run this against the real repository history, not a temporary gitized copy with truncated commits.
 
    ```bash
    make secret-scan

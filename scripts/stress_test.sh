@@ -186,11 +186,17 @@ fi
 # Build first so spartan binary exists for check_prereqs
 make build >/dev/null
 
-run_spartan() {
+run_spartan_in_dir() {
+  local run_dir="$1"
+  shift
   (
-    cd "$WORK_DIR"
+    cd "$run_dir"
     "$SPARTAN_BIN" "$@"
   )
+}
+
+run_spartan() {
+  run_spartan_in_dir "$WORK_DIR" "$@"
 }
 
 reserve_fixture_addr() {
@@ -217,10 +223,16 @@ reserve_fixture_addr() {
 
 mkdir -p "$OUT_DIR"
 mkdir -p "$WORK_DIR"
+OUT_DIR="$(cd "$OUT_DIR" && pwd -P)"
+WORK_DIR_DEFAULT="$(cd "$WORK_DIR_DEFAULT" && pwd -P)"
+WORK_DIR="$(cd "$WORK_DIR" && pwd -P)"
 if [[ "$DATA_DIR_EXPLICIT" == "0" ]]; then
   DATA_DIR="${WORK_DIR}/data"
+elif [[ "$DATA_DIR" != /* ]]; then
+  DATA_DIR="${WORK_DIR}/${DATA_DIR}"
 fi
 mkdir -p "$DATA_DIR"
+DATA_DIR="$(cd "$DATA_DIR" && pwd -P)"
 
 export DATA_DIR
 if [[ -z "$SERVER_PORT" ]]; then
@@ -441,7 +453,9 @@ wait_job_api "$RESEARCH_JOB_ID"
 curl -fsS "http://127.0.0.1:${SERVER_PORT}/v1/jobs/${RESEARCH_JOB_ID}" >"$OUT_DIR/api-research-job.json"
 curl -fsS "http://127.0.0.1:${SERVER_PORT}/v1/jobs/${RESEARCH_JOB_ID}/results" >"$OUT_DIR/api-research-results.json"
 
-run_spartan export --job-id "$RESEARCH_JOB_ID" --format md --out "$OUT_DIR/export-latest.md" >/dev/null
+# `spartan export --out` enforces writes within the command working directory.
+# Run the export from OUT_DIR so the written artifact and persisted destination stay aligned.
+run_spartan_in_dir "$OUT_DIR" export --job-id "$RESEARCH_JOB_ID" --format md --out "$OUT_DIR/export-latest.md" >/dev/null
 
 if [[ "$SKIP_SCHEDULER" == "0" ]]; then
   run_spartan schedule add --kind scrape --interval 5 --url "${TARGETS[0]}" --timeout "$TIMEOUT_SECS" >/dev/null

@@ -114,6 +114,10 @@ async function run() {
 
 	await test('shouldScanContent only scans expected metadata/docs paths', () => {
 		assert(module.shouldScanContent('docs/usage.md'), 'Expected docs markdown to be included');
+		assert(module.shouldScanContent('docs/evidence/run/summary.json'), 'Expected docs evidence JSON to be included');
+		assert(module.shouldScanContent('docs/evidence/run/output.txt'), 'Expected docs evidence text to be included');
+		assert(module.shouldScanContent('docs/evidence/run/server.log'), 'Expected docs evidence logs to be included');
+		assert(module.shouldScanContent('docs/evidence/run/index.html'), 'Expected docs evidence HTML to be included');
 		assert(module.shouldScanContent('README.md'), 'Expected README to be included');
 		assert(module.shouldScanContent('CHANGELOG.md'), 'Expected root markdown docs to be included');
 		assert(module.shouldScanContent('.github/PULL_REQUEST_TEMPLATE.md'), 'Expected .github markdown docs to be included');
@@ -125,6 +129,8 @@ async function run() {
 		assert(module.shouldScanSecrets('web/src/App.tsx'), 'Expected TSX source to be secret-scanned');
 		assert(module.shouldScanSecrets('web/package.json'), 'Expected web root config to be secret-scanned');
 		assert(module.shouldScanSecrets('.github/workflows/ci-pr.yml'), 'Expected workflow YAML to be secret-scanned');
+		assert(module.shouldScanSecrets('docs/evidence/run/server.log'), 'Expected docs evidence logs to be secret-scanned');
+		assert(module.shouldScanSecrets('docs/evidence/run/index.html'), 'Expected docs evidence HTML to be secret-scanned');
 		assert(module.shouldScanSecrets('.env.example'), 'Expected .env.example to be secret-scanned');
 		assertEqual(module.shouldScanSecrets('assets/logo.png'), false, 'Expected binary asset path to be excluded');
 	});
@@ -144,12 +150,111 @@ async function run() {
 		);
 	});
 
+	await test('findPathFindings catches tracked Finder metadata', () => {
+		const findings = module.findPathFindings('web/.DS_Store');
+		assert(findings.length > 0, 'Expected at least one finding for .DS_Store path');
+		assert(
+			findings.some(finding => finding.description.includes('Finder metadata')),
+			'Expected Finder metadata finding description',
+		);
+	});
+
 	await test('findContentFindings catches absolute paths and placeholders', () => {
 		const findings = module.findContentFindings(
 			'docs/example.md',
-			'Path /Users/tester/private.txt\nCONTACT_EMAIL_TO_BE_UPDATED_WHEN_PUBLIC',
+			'Path /Users/tester/private.txt\nScratch /tmp/private.txt\nChrome /Applications/Google Chrome.app/Contents/MacOS/Google Chrome\nCONTACT_EMAIL_TO_BE_UPDATED_WHEN_PUBLIC',
 		);
-		assertEqual(findings.length, 2, 'Expected both abs-path and placeholder findings');
+		assertEqual(findings.length, 4, 'Expected all absolute-path variants and placeholder findings');
+	});
+
+	await test('findContentFindings ignores URL path segments that resemble local paths', () => {
+		const findings = module.findContentFindings(
+			'docs/example.md',
+			'See https://example.com/tmp/report and https://example.com/Applications/Preview for hosted artifacts.',
+		);
+		assertEqual(findings.length, 0, 'Expected hosted URL path segments to be ignored');
+	});
+
+	await test('findContentFindings ignores route-like tmp/application paths in markdown and route fields', () => {
+		const findings = module.findContentFindings(
+			'docs/example.md',
+			'[report](/tmp/report)\n{"path":"/tmp/report"}\n{"url": "/Applications/Preview"}',
+		);
+		assertEqual(findings.length, 0, 'Expected route-like tmp/application paths to be ignored in route contexts');
+	});
+
+	await test('findContentFindings catches quoted tmp/application artifact paths in evidence-like JSON', () => {
+		const findings = module.findContentFindings(
+			'docs/example.md',
+			'{"artifactPath":"/tmp/run/export.md","chromeBinary":"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"}',
+		);
+		assertEqual(findings.length, 2, 'Expected evidence-style quoted machine paths to be detected');
+	});
+
+	await test('findContentFindings catches absolute paths inside markdown inline code', () => {
+		const findings = module.findContentFindings(
+			'docs/example.md',
+			'Inline code: `/Users/alice/private.txt`\nMore inline code: `/tmp/build.log`',
+		);
+		assertEqual(findings.length, 2, 'Expected inline-code absolute paths to be detected');
+	});
+
+	await test('shouldIgnoreAbsolutePathMatch ignores only route-like ambiguous paths', () => {
+		const tmpRouteField = '{"path":"/tmp/report"}';
+		const applicationRouteLink = '[report](/Applications/Preview)';
+		const artifactPathField = '{"artifactPath":"/tmp/run/export.md"}';
+		const usersPathField = '{"path":"/Users/alice/private.txt"}';
+
+		assertEqual(
+			module.shouldIgnoreAbsolutePathMatch(
+				tmpRouteField,
+				'/tmp/report',
+				tmpRouteField.indexOf('/tmp/report'),
+			),
+			true,
+			'Expected shallow /tmp route field to be ignored',
+		);
+		assertEqual(
+			module.shouldIgnoreAbsolutePathMatch(
+				applicationRouteLink,
+				'/Applications/Preview',
+				applicationRouteLink.indexOf('/Applications/Preview'),
+			),
+			true,
+			'Expected markdown-link application route to be ignored',
+		);
+		assertEqual(
+			module.shouldIgnoreAbsolutePathMatch(
+				artifactPathField,
+				'/tmp/run/export.md',
+				artifactPathField.indexOf('/tmp/run/export.md'),
+			),
+			false,
+			'Expected evidence-style tmp artifact path to remain reportable',
+		);
+		assertEqual(
+			module.shouldIgnoreAbsolutePathMatch('`/tmp/report`', '/tmp/report', 1),
+			false,
+			'Expected inline-code /tmp path to be kept',
+		);
+		assertEqual(
+			module.shouldIgnoreAbsolutePathMatch(
+				usersPathField,
+				'/Users/alice/private.txt',
+				usersPathField.indexOf('/Users/alice/private.txt'),
+			),
+			false,
+			'Expected /Users path to remain reportable',
+		);
+	});
+
+	await test('findContentFindings keeps scanning after an ignored route-like match on the same line', () => {
+		const findings = module.findContentFindings(
+			'docs/example.md',
+			'[report](/tmp/report) leaked /Users/alice/private.txt',
+		);
+		assertEqual(findings.length, 1, 'Expected later real machine path to still be detected');
+		assertEqual(findings[0].match, '/Users/alice/private.txt', 'Expected the real machine path to be reported');
 	});
 
 	await test('findSecretFindings catches high-confidence secret patterns', () => {
@@ -160,6 +265,16 @@ async function run() {
 		);
 		assertEqual(findings.length, 1, 'Expected one secret finding');
 		assertEqual(findings[0].ruleId, 'secret-openai', 'Expected OpenAI secret rule ID');
+	});
+
+	await test('findSecretFindings catches secrets in evidence logs', () => {
+		const token = ['ghp_', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ123456'].join('');
+		const findings = module.findSecretFindings(
+			'docs/evidence/run/server.log',
+			`authorization failed for token ${token}`,
+		);
+		assertEqual(findings.length, 1, 'Expected one secret finding in log content');
+		assertEqual(findings[0].ruleId, 'secret-github', 'Expected GitHub secret rule ID');
 	});
 
 	await test('parseArgs supports branch and history toggles', () => {

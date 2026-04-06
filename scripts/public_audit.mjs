@@ -25,7 +25,8 @@ const CONTENT_RULES = [
 	{
 		id: 'abs-path',
 		description: 'Absolute local machine path detected',
-		pattern: /(?:\/Users\/[^\s"'<>]+|\/home\/[^\s"'<>]+|file:\/\/\/Users\/[^\s"'<>]+|[A-Za-z]:\\Users\\[^\s"'<>]+)/,
+		pattern:
+			/(?:file:\/\/(?:\/Users\/|\/home\/|\/tmp\/|\/private\/var\/|\/var\/folders\/|\/Applications\/)[^\s`"'<>\)]+|(?:(?<=^)|(?<=[\s`"'(<[{=:,;]))(?:\/Users\/[^\s`"'<>\)]+|\/home\/[^\s`"'<>\)]+|\/tmp\/[^\s`"'<>\)]+|\/private\/var\/[^\s`"'<>\)]+|\/var\/folders\/[^\s`"'<>\)]+|\/Applications\/[^\s`"'<>\)]+|[A-Za-z]:\\(?:Users|Temp)\\[^\s`"'<>\)]+))/,
 	},
 	{
 		id: 'placeholder',
@@ -66,6 +67,7 @@ const SECRET_RULES = [
 const CONTENT_SCAN_PATHS = [
 	/^[^/]+\.md$/,
 	/^docs\/.*\.md$/,
+	/^docs\/evidence\/.*\.(?:json|txt|log|html)$/,
 	/^\.github\/.*\.(md|ya?ml)$/,
 	/^\.env\.example$/,
 	/^web\/\.env\.example$/,
@@ -74,7 +76,7 @@ const CONTENT_SCAN_PATHS = [
 
 const SECRET_SCAN_PATHS = [
 	/^[^/]+\.(?:md|json|ya?ml|toml|ini|conf|sh|zsh|bash|env|txt)$/,
-	/^(?:docs|scripts|cmd|internal|api|web|extensions|\.github)\/.*\.(?:go|ts|tsx|js|mjs|cjs|json|ya?ml|md|sh|sql|txt)$/,
+	/^(?:docs|scripts|cmd|internal|api|web|extensions|\.github)\/.*\.(?:go|ts|tsx|js|mjs|cjs|json|ya?ml|md|sh|sql|txt|log|html)$/,
 	/^(?:\.env\.example|web\/\.env\.example|extensions\/\.env\.example)$/,
 ];
 
@@ -113,6 +115,11 @@ const TRACKED_PATH_RULES = [
 		id: 'tracked-artifact',
 		description: 'Tracked OpenAPI codegen error logs should be ignored',
 		pattern: /^web\/openapi-ts-error-.*\.log$/,
+	},
+	{
+		id: 'tracked-artifact',
+		description: 'Tracked Finder metadata should be ignored',
+		pattern: /(^|\/)\.DS_Store$/,
 	},
 ];
 
@@ -293,6 +300,46 @@ function findPathFindings(filePath) {
 	return findings;
 }
 
+function looksRouteLikeAbsolutePath(matchText) {
+	if (!matchText.startsWith('/tmp/') && !matchText.startsWith('/Applications/')) {
+		return false;
+	}
+
+	const segments = matchText.split('/').filter(Boolean);
+	if (segments.length !== 2) {
+		return false;
+	}
+
+	return /^[A-Za-z0-9_-]+$/.test(segments[1]);
+}
+
+function shouldIgnoreAbsolutePathMatch(line, matchText, matchIndex) {
+	if (
+		matchText.startsWith('file://') ||
+		matchText.startsWith('/Users/') ||
+		matchText.startsWith('/home/') ||
+		matchText.startsWith('/private/var/') ||
+		matchText.startsWith('/var/folders/') ||
+		/^[A-Za-z]:\\(?:Users|Temp)\\/.test(matchText)
+	) {
+		return false;
+	}
+
+	if (!looksRouteLikeAbsolutePath(matchText)) {
+		return false;
+	}
+
+	const before = line.slice(0, matchIndex);
+	if (before.endsWith('`')) {
+		return false;
+	}
+	if (/\]\($/.test(before)) {
+		return true;
+	}
+
+	return /(?:["'](?:path|pathname|route|href|to|url)["']\s*:\s*["'])$/i.test(before);
+}
+
 function findRuleFindings(filePath, content, rules) {
 	const findings = [];
 	const lines = content.split(/\r?\n/);
@@ -301,18 +348,26 @@ function findRuleFindings(filePath, content, rules) {
 		const line = lines[index];
 
 		for (const rule of rules) {
-			const match = line.match(rule.pattern);
-			if (!match) {
-				continue;
-			}
+			const flags = rule.pattern.flags.includes('g') ? rule.pattern.flags : `${rule.pattern.flags}g`;
+			const pattern = new RegExp(rule.pattern.source, flags);
 
-			findings.push({
-				ruleId: rule.id,
-				description: rule.description,
-				file: filePath,
-				line: index + 1,
-				match: match[0],
-			});
+			for (const match of line.matchAll(pattern)) {
+				if (
+					rule.id === 'abs-path' &&
+					typeof match.index === 'number' &&
+					shouldIgnoreAbsolutePathMatch(line, match[0], match.index)
+				) {
+					continue;
+				}
+
+				findings.push({
+					ruleId: rule.id,
+					description: rule.description,
+					file: filePath,
+					line: index + 1,
+					match: match[0],
+				});
+			}
 		}
 	}
 
@@ -551,6 +606,8 @@ export {
 	findHistoryContentFindings,
 	findHistoryPathFindings,
 	findRuleFindings,
+	looksRouteLikeAbsolutePath,
+	shouldIgnoreAbsolutePathMatch,
 	findSecretFindings,
 	TRACKED_PATH_RULES,
 	branchExists,
