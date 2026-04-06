@@ -217,7 +217,7 @@ function getProfileFieldError(
   error: string | null,
   label: ProfileFieldErrorLabel,
 ): string | null {
-  if (!error || !error.startsWith(`${label} `)) {
+  if (!error?.startsWith(`${label} `)) {
     return null;
   }
 

@@ -8,7 +8,7 @@ Audit the watches and exports automation workspaces for remaining empty, loading
 
 ## Environment
 
-- Backend: `DATA_DIR=/tmp/spartan-automation-state-audit.BqJA9E PORT=8753 ./bin/spartan server`
+- Backend: `DATA_DIR=TMPDIR/spartan-automation-state-audit.BqJA9E PORT=8753 ./bin/spartan server`
 - Delay proxy: local Python proxy on `127.0.0.1:8754` used only to hold watch/export list requests long enough for visible loading-state screenshots
 - Frontend: `VITE_API_BASE_URL=http://127.0.0.1:8754 pnpm exec vite --port 5179`
 - Web URL: `http://localhost:5179`

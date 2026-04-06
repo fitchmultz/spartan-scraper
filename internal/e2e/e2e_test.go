@@ -123,8 +123,9 @@ func TestAPIMCPSchedulerExport(t *testing.T) {
 	waitForJob(t, client, port, jobID)
 	assertJobResultContains(t, client, port, jobID, "Example Domain")
 
-	exportOut := filepath.Join(t.TempDir(), "export.md")
-	runOK(t, env, "export", "--job-id", jobID, "--format", "md", "--out", exportOut)
+	exportDir := t.TempDir()
+	exportOut := filepath.Join(exportDir, "export.md")
+	runOKInDir(t, env, exportDir, "export", "--job-id", jobID, "--format", "md", "--out", exportOut)
 	assertFileNotEmpty(t, exportOut)
 
 	runOK(t, env, "schedule", "add", "--kind", "scrape", "--interval", "1", "--url", site.ScrapeURL())
@@ -141,9 +142,21 @@ func runOK(t *testing.T, env []string, args ...string) {
 	}
 }
 
+func runOKInDir(t *testing.T, env []string, dir string, args ...string) {
+	t.Helper()
+	if err := runInDir(t, env, dir, args...); err != nil {
+		t.Fatalf("%v", err)
+	}
+}
+
 func run(t *testing.T, env []string, args ...string) error {
 	t.Helper()
 	return testharness.RunCommand(t, spartanPath, testharness.MergeEnv(env), args...)
+}
+
+func runInDir(t *testing.T, env []string, dir string, args ...string) error {
+	t.Helper()
+	return testharness.RunCommandInDir(t, spartanPath, dir, testharness.MergeEnv(env), args...)
 }
 
 func startProcess(ctx context.Context, t *testing.T, env []string, dir string, name string, args ...string) (*exec.Cmd, func()) {

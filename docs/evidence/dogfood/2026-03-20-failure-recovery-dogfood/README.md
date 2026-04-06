@@ -8,9 +8,9 @@ Validate failed watch checks and failed export outcomes through the automation w
 
 ## Environment
 
-- Backend: `DATA_DIR=/tmp/spartan-failure-dogfood-final.yEYArD/data PORT=8744 MAX_CONCURRENCY=0 ./bin/spartan server`
+- Backend: `DATA_DIR=TMPDIR/spartan-failure-dogfood-final.yEYArD/data PORT=8744 MAX_CONCURRENCY=0 ./bin/spartan server`
 - Frontend: `cd web && DEV_API_PROXY_TARGET=http://127.0.0.1:8744 pnpm exec vite --host 127.0.0.1 --port 4176`
-- Watch fixture site: `python3 -m http.server 8767 --bind 127.0.0.1 -d /tmp/spartan-failure-dogfood-final.yEYArD/site`
+- Watch fixture site: `python3 -m http.server 8767 --bind 127.0.0.1 -d TMPDIR/spartan-failure-dogfood-final.yEYArD/site`
 - Web URL: `http://127.0.0.1:4176`
 - API URL: `http://127.0.0.1:8744`
 

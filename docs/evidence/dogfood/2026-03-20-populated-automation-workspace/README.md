@@ -8,7 +8,7 @@ Validate the watches and exports automation workspaces with real saved rows, bro
 
 ## Environment
 
-- Backend: `DATA_DIR=/tmp/spartan-populated-automation-workspace.mqLAGY PORT=8755 ./bin/spartan server`
+- Backend: `DATA_DIR=TMPDIR/spartan-populated-automation-workspace.mqLAGY PORT=8755 ./bin/spartan server`
 - Frontend: `DEV_API_PROXY_TARGET=http://127.0.0.1:8755 pnpm exec vite --port 5180`
 - Web URL: `http://localhost:5180`
 - API URL: `http://127.0.0.1:8755`

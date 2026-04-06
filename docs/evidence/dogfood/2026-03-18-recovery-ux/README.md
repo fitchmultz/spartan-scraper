@@ -9,11 +9,11 @@ Validate the in-product recovery UX in real degraded scenarios before moving on 
 - Spartan commit: `233e86a`
 - Web command: `make web-dev`
 - Server commands:
-  - Setup mode: `DATA_DIR=/tmp/spartan-dogfood/setup-legacy PI_ENABLED=true PI_NODE_BIN=/definitely-missing-node PI_BRIDGE_SCRIPT=/tmp/also-missing-bridge.js PROXY_POOL_FILE=/tmp/spartan-dogfood/setup-proxy.json USE_PLAYWRIGHT=1 go run ./cmd/spartan server`
-  - Runtime degraded state: `DATA_DIR=/tmp/spartan-dogfood/runtime-ok PI_ENABLED=true PI_NODE_BIN=/definitely-missing-node PI_BRIDGE_SCRIPT=/tmp/also-missing-bridge.js PROXY_POOL_FILE=/tmp/spartan-dogfood/runtime-proxy.json USE_PLAYWRIGHT=1 PLAYWRIGHT_NODEJS_PATH=/definitely-missing-node go run ./cmd/spartan server`
+  - Setup mode: `DATA_DIR=TMPDIR/spartan-dogfood/setup-legacy PI_ENABLED=true PI_NODE_BIN=/definitely-missing-node PI_BRIDGE_SCRIPT=TMPDIR/also-missing-bridge.js PROXY_POOL_FILE=TMPDIR/spartan-dogfood/setup-proxy.json USE_PLAYWRIGHT=1 go run ./cmd/spartan server`
+  - Runtime degraded state: `DATA_DIR=TMPDIR/spartan-dogfood/runtime-ok PI_ENABLED=true PI_NODE_BIN=/definitely-missing-node PI_BRIDGE_SCRIPT=TMPDIR/also-missing-bridge.js PROXY_POOL_FILE=TMPDIR/spartan-dogfood/runtime-proxy.json USE_PLAYWRIGHT=1 PLAYWRIGHT_NODEJS_PATH=/definitely-missing-node go run ./cmd/spartan server`
 - Data directories used:
-  - Setup: `/tmp/spartan-dogfood/setup-legacy`
-  - Runtime: `/tmp/spartan-dogfood/runtime-ok`
+  - Setup: `TMPDIR/spartan-dogfood/setup-legacy`
+  - Runtime: `TMPDIR/spartan-dogfood/runtime-ok`
 
 ## Scenario Matrix
 

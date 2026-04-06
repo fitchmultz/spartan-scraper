@@ -11,14 +11,14 @@ This walkthrough uses the default out-of-the-box path. Leave AI, proxy pooling, 
 ## Prerequisites
 
 - Go `1.26.1`
-- Node `25.8` (any `25.8.x` patch)
+- Node `25.9` (any `25.9.x` patch)
 - pnpm `10.33.0`
 - A `.tool-versions`-compatible version manager installed or the pinned versions already present on `PATH`
 
 ## Steps
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/fitchmultz/spartan-scraper.git
 cd spartan-scraper
 
 make verify-toolchain

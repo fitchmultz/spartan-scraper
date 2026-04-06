@@ -1,0 +1,918 @@
+Toolchain contract (<validation-repo>/.tool-versions)
+  Go:   expected 1.26.1 | actual 1.26.1
+  Node: expected 25.9 | actual 25.9.0
+  pnpm: expected 10.33.0 | actual 10.33.0
+go mod download
+cd tools/pi-bridge && pnpm install --frozen-lockfile
+Lockfile is up to date, resolution step is skipped
+Already up to date
+
+╭ Warning ─────────────────────────────────────────────────────────────────────╮
+│                                                                              │
+│   Ignored build scripts: koffi@2.15.2, protobufjs@7.5.4.                     │
+│   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+│   to run scripts.                                                            │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+Done in 302ms using pnpm v10.33.0
+cd web && pnpm install --frozen-lockfile
+Lockfile is up to date, resolution step is skipped
+Already up to date
+
+Done in 464ms using pnpm v10.33.0
+go run github.com/playwright-community/playwright-go/cmd/playwright@v0.5700.1 install --with-deps
+mkdir -p bin
+cd tools/pi-bridge && pnpm run build
+
+> @spartan/pi-bridge@0.1.0 build <validation-repo>/tools/pi-bridge
+> tsc -p tsconfig.json
+
+go build -ldflags "-X github.com/fitchmultz/spartan-scraper/internal/buildinfo.Version=1.0.0-rc1 -X github.com/fitchmultz/spartan-scraper/internal/buildinfo.Commit=5ad3cb5 -X github.com/fitchmultz/spartan-scraper/internal/buildinfo.Date=2026-04-05T20:30:57Z" -o bin/spartan ./cmd/spartan
+cd web && pnpm run build
+
+> spartan-scraper-web@1.0.0-rc1 build <validation-repo>/web
+> tsc -p tsconfig.json && vite build
+
+vite v8.0.3 building client environment for production...
+[2K
+transforming...✓ 319 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                     1.98 kB │ gzip:  0.66 kB
+dist/assets/index-D1GMHy1P.css                    110.15 kB │ gzip: 17.32 kB
+dist/assets/WebhookDeliveries-rl7h7InH.js           0.08 kB │ gzip:  0.09 kB
+dist/assets/rolldown-runtime-DF2fYuay.js            0.55 kB │ gzip:  0.35 kB
+dist/assets/feature-shared-D6fBYBHS.js              2.95 kB │ gzip:  1.11 kB
+dist/assets/ExportScheduleManager-cTnFDdNg.js       4.87 kB │ gzip:  1.97 kB
+dist/assets/feature-results-O3rO1krQ.js             5.39 kB │ gzip:  2.27 kB
+dist/assets/WatchManager-BbDO8CGu.js                5.67 kB │ gzip:  2.29 kB
+dist/assets/ChainBuilder-DvnoziQr.js                5.89 kB │ gzip:  1.99 kB
+dist/assets/ScrapeForm-ByOBQeuQ.js                  6.25 kB │ gzip:  2.18 kB
+dist/assets/ResearchForm-iLSouYli.js                7.55 kB │ gzip:  2.54 kB
+dist/assets/CrawlForm-G2uG2Tts.js                   8.07 kB │ gzip:  2.67 kB
+dist/assets/feature-chains-CnryjYXu.js             10.26 kB │ gzip:  3.57 kB
+dist/assets/feature-webhooks-BaJDHQmd.js           13.69 kB │ gzip:  3.65 kB
+dist/assets/feature-api-Czn_XkYU.js                18.74 kB │ gzip:  4.78 kB
+dist/assets/feature-watches-DrIEWVQX.js            28.55 kB │ gzip:  6.18 kB
+dist/assets/vendor-ui-Do7qbmcV.js                  44.76 kB │ gzip: 14.89 kB
+dist/assets/feature-jobs-C_Z1NXz2.js               52.80 kB │ gzip: 14.09 kB
+dist/assets/feature-templates-ClKNzzBr.js          56.35 kB │ gzip: 14.81 kB
+dist/assets/vendor-onboarding-DBNoEsGa.js          78.99 kB │ gzip: 26.60 kB
+dist/assets/ResultsExplorer-BFaM2Et6.js            80.45 kB │ gzip: 19.74 kB
+dist/assets/feature-batches-CwGiWO-C.js            96.20 kB │ gzip: 24.90 kB
+dist/assets/feature-export-schedules-DgTyd7aX.js   98.04 kB │ gzip: 22.38 kB
+dist/assets/vendor-react-kxkjiGRs.js              178.37 kB │ gzip: 56.35 kB
+dist/assets/index-DbVPOiCl.js                     211.37 kB │ gzip: 55.12 kB
+
+✓ built in 184ms
+./scripts/stress_test.sh
+Waiting for fixture to become healthy...
+fixture is healthy.
+Checking browser availability...
+Waiting for server to become healthy...
+server is healthy.
+time=2026-04-05T14:31:18.225-06:00 level=INFO msg="starting job manager" concurrency=6
+time=2026-04-05T14:31:18.226-06:00 level=INFO msg="job recovery complete" totalRecovered=0
+time=2026-04-05T14:31:18.226-06:00 level=INFO msg="started periodic db checkpoint" interval=5m
+time=2026-04-05T14:31:18.226-06:00 level=INFO msg="running job" jobID=6bc84454-3767-40b3-a7e0-088c2969b4d8 kind=scrape request_id=6bc84454-3767-40b3-a7e0-088c2969b4d8
+time=2026-04-05T14:31:18.226-06:00 level=INFO msg="processing scrape job" jobID=6bc84454-3767-40b3-a7e0-088c2969b4d8 url=http://127.0.0.1:55619/ request_id=""
+time=2026-04-05T14:31:18.228-06:00 level=INFO msg="scrape complete" url=http://127.0.0.1:55619/ status=200 title="Example Domain"
+time=2026-04-05T14:31:18.228-06:00 level=INFO msg="job succeeded" jobID=6bc84454-3767-40b3-a7e0-088c2969b4d8
+time=2026-04-05T14:31:18.499-06:00 level=INFO msg="starting job manager" concurrency=6
+time=2026-04-05T14:31:18.499-06:00 level=INFO msg="job recovery complete" totalRecovered=0
+time=2026-04-05T14:31:18.500-06:00 level=INFO msg="started periodic db checkpoint" interval=5m
+time=2026-04-05T14:31:18.500-06:00 level=INFO msg="running job" jobID=1724ccaa-d4fa-4f61-8739-a6c33a38da8d kind=scrape request_id=1724ccaa-d4fa-4f61-8739-a6c33a38da8d
+time=2026-04-05T14:31:18.500-06:00 level=INFO msg="processing scrape job" jobID=1724ccaa-d4fa-4f61-8739-a6c33a38da8d url=http://127.0.0.1:55619/html request_id=""
+time=2026-04-05T14:31:18.501-06:00 level=INFO msg="scrape complete" url=http://127.0.0.1:55619/html status=200 title="Fixture Article"
+time=2026-04-05T14:31:18.501-06:00 level=INFO msg="job succeeded" jobID=1724ccaa-d4fa-4f61-8739-a6c33a38da8d
+time=2026-04-05T14:31:18.772-06:00 level=INFO msg="starting job manager" concurrency=6
+time=2026-04-05T14:31:18.773-06:00 level=INFO msg="job recovery complete" totalRecovered=0
+time=2026-04-05T14:31:18.773-06:00 level=INFO msg="started periodic db checkpoint" interval=5m
+time=2026-04-05T14:31:18.773-06:00 level=INFO msg="running job" jobID=f87cbd1f-adfe-45e1-8e01-03aaddb7b9d4 kind=scrape request_id=f87cbd1f-adfe-45e1-8e01-03aaddb7b9d4
+time=2026-04-05T14:31:18.773-06:00 level=INFO msg="processing scrape job" jobID=f87cbd1f-adfe-45e1-8e01-03aaddb7b9d4 url=http://127.0.0.1:55619/research/pricing request_id=""
+time=2026-04-05T14:31:18.774-06:00 level=INFO msg="scrape complete" url=http://127.0.0.1:55619/research/pricing status=200 title=Pricing
+time=2026-04-05T14:31:18.774-06:00 level=INFO msg="job succeeded" jobID=f87cbd1f-adfe-45e1-8e01-03aaddb7b9d4
+time=2026-04-05T14:31:19.045-06:00 level=INFO msg="starting job manager" concurrency=6
+time=2026-04-05T14:31:19.046-06:00 level=INFO msg="job recovery complete" totalRecovered=0
+time=2026-04-05T14:31:19.046-06:00 level=INFO msg="started periodic db checkpoint" interval=5m
+time=2026-04-05T14:31:19.046-06:00 level=INFO msg="running job" jobID=878f7ced-9262-45d9-b81b-0b96a7ef506c kind=scrape request_id=878f7ced-9262-45d9-b81b-0b96a7ef506c
+time=2026-04-05T14:31:19.046-06:00 level=INFO msg="processing scrape job" jobID=878f7ced-9262-45d9-b81b-0b96a7ef506c url=http://127.0.0.1:55619/research/faq request_id=""
+time=2026-04-05T14:31:19.047-06:00 level=INFO msg="scrape complete" url=http://127.0.0.1:55619/research/faq status=200 title=FAQ
+time=2026-04-05T14:31:19.047-06:00 level=INFO msg="job succeeded" jobID=878f7ced-9262-45d9-b81b-0b96a7ef506c
+time=2026-04-05T14:31:19.319-06:00 level=INFO msg="starting job manager" concurrency=6
+time=2026-04-05T14:31:19.319-06:00 level=INFO msg="job recovery complete" totalRecovered=0
+time=2026-04-05T14:31:19.320-06:00 level=INFO msg="started periodic db checkpoint" interval=5m
+time=2026-04-05T14:31:19.320-06:00 level=INFO msg="running job" jobID=09188e70-e838-4525-aeb2-a22fe69b2d23 kind=crawl request_id=09188e70-e838-4525-aeb2-a22fe69b2d23
+time=2026-04-05T14:31:19.320-06:00 level=INFO msg="processing crawl job" jobID=09188e70-e838-4525-aeb2-a22fe69b2d23 url=http://127.0.0.1:55619/ request_id=""
+time=2026-04-05T14:31:19.320-06:00 level=INFO msg="crawl.Run start" url=http://127.0.0.1:55619/ maxDepth=2 maxPages=60
+time=2026-04-05T14:31:19.321-06:00 level=INFO msg="crawl page complete" url=http://127.0.0.1:55619/ status=200 title="Example Domain"
+time=2026-04-05T14:31:19.322-06:00 level=INFO msg="crawl page complete" url=http://127.0.0.1:55619/research/pricing status=200 title=Pricing
+time=2026-04-05T14:31:19.322-06:00 level=INFO msg="crawl page complete" url=http://127.0.0.1:55619/html status=200 title="Fixture Article"
+time=2026-04-05T14:31:19.322-06:00 level=INFO msg="crawl page complete" url=http://127.0.0.1:55619/crawl/root status=200 title="Crawl Root"
+time=2026-04-05T14:31:19.322-06:00 level=INFO msg="crawl page complete" url=http://127.0.0.1:55619/research/faq status=200 title=FAQ
+time=2026-04-05T14:31:19.322-06:00 level=INFO msg="crawl page complete" url=http://127.0.0.1:55619/crawl/b status=200 title="Crawl Node B"
+time=2026-04-05T14:31:19.322-06:00 level=INFO msg="crawl page complete" url=http://127.0.0.1:55619/crawl/a status=200 title="Crawl Node A"
+time=2026-04-05T14:31:19.322-06:00 level=INFO msg="crawl completed" totalProcessed=7
+time=2026-04-05T14:31:19.322-06:00 level=INFO msg="job succeeded" jobID=09188e70-e838-4525-aeb2-a22fe69b2d23
+time=2026-04-05T14:31:19.593-06:00 level=INFO msg="starting job manager" concurrency=6
+time=2026-04-05T14:31:19.593-06:00 level=INFO msg="job recovery complete" totalRecovered=0
+time=2026-04-05T14:31:19.593-06:00 level=INFO msg="started periodic db checkpoint" interval=5m
+time=2026-04-05T14:31:19.594-06:00 level=INFO msg="running job" jobID=c40982dd-9649-4e31-958a-e6976ef00c28 kind=crawl request_id=c40982dd-9649-4e31-958a-e6976ef00c28
+time=2026-04-05T14:31:19.594-06:00 level=INFO msg="processing crawl job" jobID=c40982dd-9649-4e31-958a-e6976ef00c28 url=http://127.0.0.1:55619/html request_id=""
+time=2026-04-05T14:31:19.594-06:00 level=INFO msg="crawl.Run start" url=http://127.0.0.1:55619/html maxDepth=2 maxPages=60
+time=2026-04-05T14:31:19.595-06:00 level=INFO msg="crawl page complete" url=http://127.0.0.1:55619/html status=200 title="Fixture Article"
+time=2026-04-05T14:31:19.595-06:00 level=INFO msg="crawl completed" totalProcessed=1
+time=2026-04-05T14:31:19.595-06:00 level=INFO msg="job succeeded" jobID=c40982dd-9649-4e31-958a-e6976ef00c28
+time=2026-04-05T14:31:19.866-06:00 level=INFO msg="starting job manager" concurrency=6
+time=2026-04-05T14:31:19.866-06:00 level=INFO msg="job recovery complete" totalRecovered=0
+time=2026-04-05T14:31:19.866-06:00 level=INFO msg="started periodic db checkpoint" interval=5m
+time=2026-04-05T14:31:19.867-06:00 level=INFO msg="running job" jobID=731d3f3c-4009-4254-830f-1874390889bf kind=crawl request_id=731d3f3c-4009-4254-830f-1874390889bf
+time=2026-04-05T14:31:19.867-06:00 level=INFO msg="processing crawl job" jobID=731d3f3c-4009-4254-830f-1874390889bf url=http://127.0.0.1:55619/research/pricing request_id=""
+time=2026-04-05T14:31:19.867-06:00 level=INFO msg="crawl.Run start" url=http://127.0.0.1:55619/research/pricing maxDepth=2 maxPages=60
+time=2026-04-05T14:31:19.868-06:00 level=INFO msg="crawl page complete" url=http://127.0.0.1:55619/research/pricing status=200 title=Pricing
+time=2026-04-05T14:31:19.868-06:00 level=INFO msg="crawl page complete" url=http://127.0.0.1:55619/research/faq status=200 title=FAQ
+time=2026-04-05T14:31:19.868-06:00 level=INFO msg="crawl completed" totalProcessed=2
+time=2026-04-05T14:31:19.868-06:00 level=INFO msg="job succeeded" jobID=731d3f3c-4009-4254-830f-1874390889bf
+time=2026-04-05T14:31:20.139-06:00 level=INFO msg="starting job manager" concurrency=6
+time=2026-04-05T14:31:20.139-06:00 level=INFO msg="job recovery complete" totalRecovered=0
+time=2026-04-05T14:31:20.139-06:00 level=INFO msg="started periodic db checkpoint" interval=5m
+time=2026-04-05T14:31:20.139-06:00 level=INFO msg="running job" jobID=9b331733-8402-4a80-951e-606fa1258461 kind=crawl request_id=9b331733-8402-4a80-951e-606fa1258461
+time=2026-04-05T14:31:20.140-06:00 level=INFO msg="processing crawl job" jobID=9b331733-8402-4a80-951e-606fa1258461 url=http://127.0.0.1:55619/research/faq request_id=""
+time=2026-04-05T14:31:20.140-06:00 level=INFO msg="crawl.Run start" url=http://127.0.0.1:55619/research/faq maxDepth=2 maxPages=60
+time=2026-04-05T14:31:20.140-06:00 level=INFO msg="crawl page complete" url=http://127.0.0.1:55619/research/faq status=200 title=FAQ
+time=2026-04-05T14:31:20.141-06:00 level=INFO msg="crawl page complete" url=http://127.0.0.1:55619/research/pricing status=200 title=Pricing
+time=2026-04-05T14:31:20.141-06:00 level=INFO msg="crawl completed" totalProcessed=2
+time=2026-04-05T14:31:20.141-06:00 level=INFO msg="job succeeded" jobID=9b331733-8402-4a80-951e-606fa1258461
+time=2026-04-05T14:31:20.410-06:00 level=INFO msg="starting job manager" concurrency=6
+time=2026-04-05T14:31:20.411-06:00 level=INFO msg="job recovery complete" totalRecovered=0
+time=2026-04-05T14:31:20.411-06:00 level=INFO msg="started periodic db checkpoint" interval=5m
+time=2026-04-05T14:31:20.411-06:00 level=INFO msg="running job" jobID=5b905cc0-643c-4225-931e-83852cf8716d kind=research request_id=5b905cc0-643c-4225-931e-83852cf8716d
+time=2026-04-05T14:31:20.412-06:00 level=INFO msg="processing research job" jobID=5b905cc0-643c-4225-931e-83852cf8716d query=pricing request_id=""
+time=2026-04-05T14:31:20.412-06:00 level=INFO msg="research.Run start" query=pricing urls="[http://127.0.0.1:55619/ http://127.0.0.1:55619/html http://127.0.0.1:55619/research/pricing http://127.0.0.1:55619/research/faq]"
+time=2026-04-05T14:31:20.412-06:00 level=INFO msg="crawl.Run start" url=http://127.0.0.1:55619/ maxDepth=2 maxPages=200
+time=2026-04-05T14:31:20.413-06:00 level=INFO msg="crawl page complete" url=http://127.0.0.1:55619/ status=200 title="Example Domain"
+time=2026-04-05T14:31:20.413-06:00 level=INFO msg="crawl page complete" url=http://127.0.0.1:55619/html status=200 title="Fixture Article"
+time=2026-04-05T14:31:20.413-06:00 level=INFO msg="crawl page complete" url=http://127.0.0.1:55619/crawl/root status=200 title="Crawl Root"
+time=2026-04-05T14:31:20.413-06:00 level=INFO msg="crawl page complete" url=http://127.0.0.1:55619/research/pricing status=200 title=Pricing
+time=2026-04-05T14:31:20.413-06:00 level=INFO msg="crawl page complete" url=http://127.0.0.1:55619/crawl/a status=200 title="Crawl Node A"
+time=2026-04-05T14:31:20.413-06:00 level=INFO msg="crawl page complete" url=http://127.0.0.1:55619/crawl/b status=200 title="Crawl Node B"
+time=2026-04-05T14:31:20.413-06:00 level=INFO msg="crawl page complete" url=http://127.0.0.1:55619/research/faq status=200 title=FAQ
+time=2026-04-05T14:31:20.413-06:00 level=INFO msg="crawl completed" totalProcessed=7
+time=2026-04-05T14:31:20.414-06:00 level=INFO msg="crawl.Run start" url=http://127.0.0.1:55619/html maxDepth=2 maxPages=200
+time=2026-04-05T14:31:20.414-06:00 level=INFO msg="crawl page complete" url=http://127.0.0.1:55619/html status=200 title="Fixture Article"
+time=2026-04-05T14:31:20.414-06:00 level=INFO msg="crawl completed" totalProcessed=1
+time=2026-04-05T14:31:20.414-06:00 level=INFO msg="crawl.Run start" url=http://127.0.0.1:55619/research/pricing maxDepth=2 maxPages=200
+time=2026-04-05T14:31:20.614-06:00 level=INFO msg="crawl page complete" url=http://127.0.0.1:55619/research/pricing status=200 title=Pricing
+time=2026-04-05T14:31:20.813-06:00 level=INFO msg="crawl page complete" url=http://127.0.0.1:55619/research/faq status=200 title=FAQ
+time=2026-04-05T14:31:20.813-06:00 level=INFO msg="crawl completed" totalProcessed=2
+time=2026-04-05T14:31:20.814-06:00 level=INFO msg="crawl.Run start" url=http://127.0.0.1:55619/research/faq maxDepth=2 maxPages=200
+time=2026-04-05T14:31:21.013-06:00 level=INFO msg="crawl page complete" url=http://127.0.0.1:55619/research/faq status=200 title=FAQ
+time=2026-04-05T14:31:21.214-06:00 level=INFO msg="crawl page complete" url=http://127.0.0.1:55619/research/pricing status=200 title=Pricing
+time=2026-04-05T14:31:21.214-06:00 level=INFO msg="crawl completed" totalProcessed=2
+time=2026-04-05T14:31:21.214-06:00 level=INFO msg="research gathering complete" evidenceCount=12 successCount=4 failCount=0
+time=2026-04-05T14:31:21.214-06:00 level=INFO msg="research complete" confidence=0.4903440618549295
+time=2026-04-05T14:31:21.214-06:00 level=INFO msg="job succeeded" jobID=5b905cc0-643c-4225-931e-83852cf8716d
+Waiting for job ce817357-9013-48ed-8d5b-f6194fc61b91 to complete...
+job ce817357-9013-48ed-8d5b-f6194fc61b91 succeeded.
+Waiting for job c8474972-a6ae-4260-8cdc-410b33b78c29 to complete...
+job c8474972-a6ae-4260-8cdc-410b33b78c29 succeeded.
+Waiting for job a4a778cd-f85c-4275-bb5c-3916c8dda9fb to complete...
+job a4a778cd-f85c-4275-bb5c-3916c8dda9fb succeeded.
+time=2026-04-05T14:31:30.730-06:00 level=INFO msg="starting job manager" concurrency=6
+time=2026-04-05T14:31:30.731-06:00 level=INFO msg="job recovery complete" totalRecovered=0
+time=2026-04-05T14:31:30.731-06:00 level=INFO msg="started periodic db checkpoint" interval=5m
+time=2026-04-05T14:31:30.749-06:00 level=INFO msg="starting job manager" concurrency=6
+time=2026-04-05T14:31:30.750-06:00 level=INFO msg="job recovery complete" totalRecovered=0
+time=2026-04-05T14:31:30.750-06:00 level=INFO msg="started periodic db checkpoint" interval=5m
+time=2026-04-05T14:31:30.769-06:00 level=INFO msg="starting job manager" concurrency=6
+time=2026-04-05T14:31:30.769-06:00 level=INFO msg="job recovery complete" totalRecovered=0
+time=2026-04-05T14:31:30.769-06:00 level=INFO msg="started periodic db checkpoint" interval=5m
+time=2026-04-05T14:31:30.770-06:00 level=INFO msg="running job" jobID=8194242f-e628-43e3-9280-aa56e72fb901 kind=scrape request_id=8194242f-e628-43e3-9280-aa56e72fb901
+time=2026-04-05T14:31:30.771-06:00 level=INFO msg="processing scrape job" jobID=8194242f-e628-43e3-9280-aa56e72fb901 url=http://127.0.0.1:55619/ request_id=""
+time=2026-04-05T14:31:30.771-06:00 level=INFO msg="scrape complete" url=http://127.0.0.1:55619/ status=200 title="Example Domain"
+time=2026-04-05T14:31:30.771-06:00 level=INFO msg="job succeeded" jobID=8194242f-e628-43e3-9280-aa56e72fb901
+Stress test completed. Outputs in TMPDIR/spartan-release-readiness.Kfazme/repo/out/stress
+Cleaning up...
+go test -v ./internal/e2e/...
+=== RUN   Test00Preflight
+    e2e_test.go:61: Checking browser availability...
+--- PASS: Test00Preflight (0.00s)
+=== RUN   TestCLIHelp
+    e2e_test.go:69: Running: TMPDIR/system/rf/t1b4c_cn7sgc_f6tkyg0wsk00000gn/T/spartan-bin-3251300346/spartan --help
+    e2e_test.go:70: Running: TMPDIR/system/rf/t1b4c_cn7sgc_f6tkyg0wsk00000gn/T/spartan-bin-3251300346/spartan auth --help
+    e2e_test.go:71: Running: TMPDIR/system/rf/t1b4c_cn7sgc_f6tkyg0wsk00000gn/T/spartan-bin-3251300346/spartan schedule --help
+    e2e_test.go:72: Running: TMPDIR/system/rf/t1b4c_cn7sgc_f6tkyg0wsk00000gn/T/spartan-bin-3251300346/spartan server --help
+    e2e_test.go:73: Running: TMPDIR/system/rf/t1b4c_cn7sgc_f6tkyg0wsk00000gn/T/spartan-bin-3251300346/spartan mcp --help
+    e2e_test.go:74: Running: TMPDIR/system/rf/t1b4c_cn7sgc_f6tkyg0wsk00000gn/T/spartan-bin-3251300346/spartan tui --help
+--- PASS: TestCLIHelp (0.11s)
+=== RUN   TestTUISmoke
+    e2e_test.go:79: Running: TMPDIR/system/rf/t1b4c_cn7sgc_f6tkyg0wsk00000gn/T/spartan-bin-3251300346/spartan tui --smoke
+--- PASS: TestTUISmoke (0.03s)
+=== RUN   TestCLIHTTPFlow
+    e2e_test.go:89: Running: TMPDIR/system/rf/t1b4c_cn7sgc_f6tkyg0wsk00000gn/T/spartan-bin-3251300346/spartan scrape --url http://127.0.0.1:55701/ --wait --wait-timeout 60 --out TMPDIR/system/rf/t1b4c_cn7sgc_f6tkyg0wsk00000gn/T/TestCLIHTTPFlow2614419101/002/scrape.json
+    e2e_test.go:93: Running: TMPDIR/system/rf/t1b4c_cn7sgc_f6tkyg0wsk00000gn/T/spartan-bin-3251300346/spartan crawl --url http://127.0.0.1:55701/crawl/root --max-depth 1 --max-pages 5 --wait --wait-timeout 90 --out TMPDIR/system/rf/t1b4c_cn7sgc_f6tkyg0wsk00000gn/T/TestCLIHTTPFlow2614419101/002/crawl.jsonl
+    e2e_test.go:97: Running: TMPDIR/system/rf/t1b4c_cn7sgc_f6tkyg0wsk00000gn/T/spartan-bin-3251300346/spartan research --query example --urls http://127.0.0.1:55701/research/pricing,http://127.0.0.1:55701/research/faq --wait --wait-timeout 60 --out TMPDIR/system/rf/t1b4c_cn7sgc_f6tkyg0wsk00000gn/T/TestCLIHTTPFlow2614419101/002/research.jsonl
+--- PASS: TestCLIHTTPFlow (0.82s)
+=== RUN   TestAPIMCPSchedulerExport
+    e2e_test.go:111: Starting process: TMPDIR/system/rf/t1b4c_cn7sgc_f6tkyg0wsk00000gn/T/spartan-bin-3251300346/spartan server in TMPDIR/system/rf/t1b4c_cn7sgc_f6tkyg0wsk00000gn/T/TestAPIMCPSchedulerExport122055035/002
+time=2026-04-05T14:31:41.732-06:00 level=INFO msg="starting job manager" concurrency=4
+time=2026-04-05T14:31:41.732-06:00 level=INFO msg="job recovery complete" totalRecovered=0
+time=2026-04-05T14:31:41.732-06:00 level=INFO msg="analytics collector started"
+time=2026-04-05T14:31:41.732-06:00 level=INFO msg="started periodic db checkpoint" interval=5m
+time=2026-04-05T14:31:41.732-06:00 level=INFO msg="starting websocket hub"
+time=2026-04-05T14:31:41.732-06:00 level=INFO msg="export trigger started" scheduleCount=0
+time=2026-04-05T14:31:41.733-06:00 level=INFO msg="Spartan server listening" addr=127.0.0.1:55710
+time=2026-04-05T14:31:41.813-06:00 level=INFO msg="request started" method=GET path=/healthz query="" remote_addr=127.0.0.1:55713 request_id=f5860a51-d196-48b4-b45a-113236786896
+time=2026-04-05T14:31:41.814-06:00 level=INFO msg="request completed" method=GET path=/healthz status=200 duration_ms=0 request_id=f5860a51-d196-48b4-b45a-113236786896
+time=2026-04-05T14:31:41.815-06:00 level=INFO msg="request started" method=POST path=/v1/scrape query="" remote_addr=127.0.0.1:55714 request_id=c27bb120-f6df-4a3c-b747-c3059b915ada
+time=2026-04-05T14:31:41.815-06:00 level=INFO msg="running job" jobID=7b3b0633-da01-4a07-a2df-04d4a224f232 kind=scrape request_id=c27bb120-f6df-4a3c-b747-c3059b915ada
+time=2026-04-05T14:31:41.816-06:00 level=INFO msg="request completed" method=POST path=/v1/scrape status=201 duration_ms=0 request_id=c27bb120-f6df-4a3c-b747-c3059b915ada
+time=2026-04-05T14:31:41.816-06:00 level=INFO msg="request started" method=GET path=/v1/jobs/7b3b0633-da01-4a07-a2df-04d4a224f232 query="" remote_addr=127.0.0.1:55715 request_id=e516174c-5bde-4a88-bbb0-613b580918c5
+time=2026-04-05T14:31:41.816-06:00 level=INFO msg="processing scrape job" jobID=7b3b0633-da01-4a07-a2df-04d4a224f232 url=http://127.0.0.1:55711/ request_id=c27bb120-f6df-4a3c-b747-c3059b915ada
+time=2026-04-05T14:31:41.817-06:00 level=INFO msg="request completed" method=GET path=/v1/jobs/7b3b0633-da01-4a07-a2df-04d4a224f232 status=200 duration_ms=0 request_id=e516174c-5bde-4a88-bbb0-613b580918c5
+time=2026-04-05T14:31:41.817-06:00 level=INFO msg="scrape complete" url=http://127.0.0.1:55711/ status=200 title="Example Domain"
+time=2026-04-05T14:31:41.817-06:00 level=INFO msg="job succeeded" jobID=7b3b0633-da01-4a07-a2df-04d4a224f232
+time=2026-04-05T14:31:41.918-06:00 level=INFO msg="request started" method=GET path=/v1/jobs/7b3b0633-da01-4a07-a2df-04d4a224f232 query="" remote_addr=127.0.0.1:55715 request_id=aed18d71-f791-41b1-b928-33d2c72be70d
+time=2026-04-05T14:31:41.919-06:00 level=INFO msg="request completed" method=GET path=/v1/jobs/7b3b0633-da01-4a07-a2df-04d4a224f232 status=200 duration_ms=0 request_id=aed18d71-f791-41b1-b928-33d2c72be70d
+time=2026-04-05T14:31:41.919-06:00 level=INFO msg="request started" method=GET path=/v1/jobs/7b3b0633-da01-4a07-a2df-04d4a224f232/results query="" remote_addr=127.0.0.1:55715 request_id=c13c6817-eeb1-4870-8309-2c0b123066ad
+time=2026-04-05T14:31:41.919-06:00 level=INFO msg="request completed" method=GET path=/v1/jobs/7b3b0633-da01-4a07-a2df-04d4a224f232/results status=200 duration_ms=0 request_id=c13c6817-eeb1-4870-8309-2c0b123066ad
+    e2e_test.go:128: Running: TMPDIR/system/rf/t1b4c_cn7sgc_f6tkyg0wsk00000gn/T/spartan-bin-3251300346/spartan export --job-id 7b3b0633-da01-4a07-a2df-04d4a224f232 --format md --out TMPDIR/system/rf/t1b4c_cn7sgc_f6tkyg0wsk00000gn/T/TestAPIMCPSchedulerExport122055035/003/export.md
+    e2e_test.go:131: Running: TMPDIR/system/rf/t1b4c_cn7sgc_f6tkyg0wsk00000gn/T/spartan-bin-3251300346/spartan schedule add --kind scrape --interval 1 --url http://127.0.0.1:55711/
+time=2026-04-05T14:31:41.987-06:00 level=INFO msg="request started" method=GET path=/v1/jobs query="" remote_addr=127.0.0.1:55715 request_id=2c9e7312-fbaf-4b15-916c-e6e4be2312f1
+time=2026-04-05T14:31:41.987-06:00 level=INFO msg="request completed" method=GET path=/v1/jobs status=200 duration_ms=0 request_id=2c9e7312-fbaf-4b15-916c-e6e4be2312f1
+--- PASS: TestAPIMCPSchedulerExport (0.28s)
+=== RUN   TestAuthTargets
+    external_test.go:40: Running: TMPDIR/system/rf/t1b4c_cn7sgc_f6tkyg0wsk00000gn/T/spartan-bin-3251300346/spartan auth set --name chromedp-local --login-url http://127.0.0.1:55717/login/chromedp --login-user-selector #username --login-pass-selector #password --login-submit-selector button[type=submit] --login-user tomsmith --login-pass SuperSecretPassword!
+    external_test.go:50: Attempt 1/3 to find "Secure Area" in TMPDIR/system/rf/t1b4c_cn7sgc_f6tkyg0wsk00000gn/T/TestAuthTargets2438322909/002/chromedp.json
+    external_test.go:50: Running: TMPDIR/system/rf/t1b4c_cn7sgc_f6tkyg0wsk00000gn/T/spartan-bin-3251300346/spartan scrape --url http://127.0.0.1:55717/secure/chromedp --headless --auth-profile chromedp-local --wait --wait-timeout 90 --timeout 30 --out TMPDIR/system/rf/t1b4c_cn7sgc_f6tkyg0wsk00000gn/T/TestAuthTargets2438322909/002/chromedp.json
+    external_test.go:61: Running: TMPDIR/system/rf/t1b4c_cn7sgc_f6tkyg0wsk00000gn/T/spartan-bin-3251300346/spartan auth set --name playwright-local --login-url http://127.0.0.1:55717/login/playwright --login-user-selector #username --login-pass-selector #password --login-submit-selector #submit-login --login-user practice --login-pass SuperSecretPassword!
+    external_test.go:71: Attempt 1/3 to find "Secure Area" in TMPDIR/system/rf/t1b4c_cn7sgc_f6tkyg0wsk00000gn/T/TestAuthTargets2438322909/002/playwright.json
+    external_test.go:71: Running: TMPDIR/system/rf/t1b4c_cn7sgc_f6tkyg0wsk00000gn/T/spartan-bin-3251300346/spartan scrape --url http://127.0.0.1:55717/secure/playwright --headless --playwright --auth-profile playwright-local --wait --wait-timeout 90 --timeout 30 --out TMPDIR/system/rf/t1b4c_cn7sgc_f6tkyg0wsk00000gn/T/TestAuthTargets2438322909/002/playwright.json
+    external_test.go:84: Attempt 1/3 to find "authorized" in TMPDIR/system/rf/t1b4c_cn7sgc_f6tkyg0wsk00000gn/T/TestAuthTargets2438322909/002/basic-auth.json
+    external_test.go:84: Running: TMPDIR/system/rf/t1b4c_cn7sgc_f6tkyg0wsk00000gn/T/spartan-bin-3251300346/spartan scrape --url http://127.0.0.1:55717/auth/basic --auth-basic user:passwd --wait --wait-timeout 60 --timeout 30 --out TMPDIR/system/rf/t1b4c_cn7sgc_f6tkyg0wsk00000gn/T/TestAuthTargets2438322909/002/basic-auth.json
+--- PASS: TestAuthTargets (3.12s)
+=== RUN   TestManagerRecoverQueuedJobsPagination
+2026/04/05 14:31:45 INFO starting job manager concurrency=2
+2026/04/05 14:31:45 INFO recovering queued job jobID=453bf428-46ff-4c6a-9095-982521c5b70a kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=f07f4a7b-8b56-46d2-81f6-6c47b06987c2 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=81921d77-3f8d-43fc-a187-0865918121c9 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=69cbdaee-b2f5-4400-9013-8f80ea8b5db2 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=19374f59-d19f-4e62-8506-de7eeef8cff2 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=db232a30-1361-4cd9-a931-1d6a019e69ad kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=1119f6d8-db21-4a23-9eaf-7421d546eaba kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=1177edd3-3ae8-47b5-9723-6ff967a8bb88 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=d57ccf46-64dd-430d-9cfe-b15bc089b3a8 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=dc986bf8-bac6-4013-b53d-b0aacf7b12b5 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=8fc97cfb-705a-43bd-b8ed-99d219738c21 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=8408019f-0c6d-4b8f-98aa-dd9df366036c kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=889d9710-f1d0-4beb-97de-b16aa613e8ab kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=c96d54b1-ce55-443c-84c6-bf5fb665e61c kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=421132f8-91fb-4387-a3c2-2755bdeeae0d kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=4ad792df-8db2-43e0-9b61-f2b413c4b4fb kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=a802e09f-c4a9-4e41-9e0c-9c0ab3307599 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=e160e8de-eb0a-46ed-a681-18af921d42d8 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=78f68bcb-ed63-4e07-8746-c7090e3a70ff kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=628892b7-cf11-44aa-a375-807a14ebf71d kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=2885974d-38ba-41fd-b389-a4b0885198fb kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=2f104432-388e-407d-9689-57ee21b21df0 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=58830f07-1a29-434a-a4d3-7c32bc4695f3 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=f5d17155-a9ee-4ae0-a01a-b2480eccfff9 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=4564f054-30ed-4d10-ae7c-234e73e95417 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=0f707def-ae09-42f0-bd3b-d683ff82b9ed kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=7c6edcf2-1c30-417c-a42a-729fd26da3cc kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=56b71ac2-9d2b-4566-b30b-3a3b5356fa41 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=d7ec361c-e5ee-4bb6-8e7d-c9e1a9debbdf kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=6cacc228-8092-422c-81dd-aaf1b29aab12 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=341e7d3c-b4e6-4d77-87ae-f101964610db kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=02ad6d97-c933-4ac0-96da-5b8f8b463609 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=846dd5a1-324b-4921-9d68-4609846bf824 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=2eae2e7b-fa5b-4630-bbdb-675b5232c995 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=ec5d557c-e73e-4816-9c54-89fe8def60f3 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=cdaff712-c660-4ada-9f04-3a67e22e6182 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=5c5cbc7b-a625-4cda-b6ca-48f913cc04ab kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=8107e6aa-a7af-49e8-adfb-891d0903efe5 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=c055d630-dacc-4c5f-b7e1-e3a4503a8a4f kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=4f5b451d-2ad1-4c3d-a1f5-e1dea45f22c8 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=cd71d1ec-77d2-4ca8-a80e-3815eaed8ab8 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=07e79947-3381-40da-aefb-f5b01983cfad kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=04bf4ed7-b314-4fa5-9a8f-5bdf69bc2c4c kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=7170b4ff-9251-4527-a0cc-5b78f3e520f6 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=9bdebdd7-337c-4cd7-a314-83280be3861f kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=bb8c81bd-acf3-4795-9919-cc44d141dbc6 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=be0d8fda-c3d9-4942-8505-ad4c14ed5b90 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=804519a7-0bef-4943-8973-820242d78e9d kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=395047b3-08b0-4edd-8b6f-83994c709eaf kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=13abef96-668e-483b-b337-78935233aa4b kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=4cc25ca9-5bf3-4e06-8c93-074672d027d5 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=76e0b8c9-a3cb-488f-807c-fada2ef31f3d kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=d66571e5-f704-45ba-9b7b-1b3f643b1e13 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=211c3b8e-64ae-4759-977d-305739e6b9c9 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=9c781a78-7a95-44a2-9c79-14af31dc00cb kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=845f5355-ddaa-4919-bf8d-d5df0dcec47c kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=6be75c97-ed53-48da-8a69-c098d333da7c kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=25dfa87f-1a76-414e-8f2d-f2ab77366b18 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=b20d14a9-7813-4cc8-91e5-75b85e6380ac kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=4f3fa5bb-797f-4356-84ea-10f4bd30bef7 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=a1fd8746-2d41-41bf-b5f0-cfa86bfd47fd kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=70880db7-b632-49b9-ab81-15f09c060af5 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=379eba61-0172-4253-afd8-32237f581bc7 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=36878c1c-698c-402b-93d0-022e60273087 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=3dfc2779-a05b-40aa-84b9-c624da38412b kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=7d6b2d31-b92c-4362-bd37-f65f43768f5d kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=c34b84b4-d19e-4149-89ff-0ff4aab13f93 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=bada2626-f840-4231-9f72-4d90363e3a6f kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=821a33a2-9621-49dc-ba3f-a11c34324b2a kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=4ac52cdb-2eee-496f-b2e7-9f6bf44a906e kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=e7494103-2882-4bb9-9382-1f65be722837 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=1d49950c-9f56-4b58-b2b6-e08e47e033a6 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=7a90c13d-314b-4d2a-b2fe-66d27045baa3 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=26b288e5-b7c0-4b66-b826-258d72e5688a kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=22b8d630-0356-45e7-b7c7-3b4dfde2bc84 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=eec6281e-b44a-4639-8ec4-484697c4808a kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=c058eece-2221-41d8-8168-75afcc2fe440 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=afeaab71-af98-448b-a768-aff5fd100628 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=e0c0072e-aa03-4ca6-bced-228ece6d7a58 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=61570db2-a684-463b-a28d-88ed4bab430a kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=364a84b5-ba20-4843-ad16-0e9485e8c880 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=d866acdd-8b58-4a42-8343-4f49e0dfcbd6 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=29c07266-712c-4d49-8470-128907c29b8e kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=d986bf0f-778d-485e-9f4c-5828786767ae kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=7276b521-f21a-410d-80eb-6e9e6fdf59d2 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=d0c4864b-ac83-44ea-91d3-16dca11723db kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=5ed334ce-933c-4406-9dc2-f3342adcc555 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=c85a2dc0-7504-4c43-a02a-46c448ceea0b kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=f6d8dd16-b40d-4e42-96c8-862a6b210550 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=9790f8ef-1e04-4ab8-8651-21793dff9154 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=1cfe9145-f646-4fd3-a06a-6cee937cef32 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=e6129af6-fd62-4df6-a928-64b9e67259b6 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=1d1f335e-c99b-47fc-a89a-6672d16ce81c kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=e48306e9-5e1d-4cac-a3bf-eb9da1cd8533 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=01c99de4-193c-42b5-995b-6cf703ab4295 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=9a178cce-3774-4253-8292-3606eb023031 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=d6f72984-d01f-418b-bd8e-0434a0b0fe61 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=a1c23082-374d-423e-a2cd-74552397da69 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=4832201a-f73f-401c-a0c7-9ab646f2a206 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=860739e4-277a-4177-8556-effc7f78a20a kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=aad1218a-91ee-4003-a888-154e2f712bf6 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=5f47ae60-32c4-4a0d-9a11-6e42d8e42e03 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=67f355e2-b871-4db8-8f90-c9f1654e0378 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=76cfa96d-2225-4796-9b2f-92be4795e49b kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=13ed66c3-e49d-4c09-ab79-cc7270395aea kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=2fd2b159-80df-4132-a678-422978037ed2 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=25afa87d-aef6-4aa7-ac81-3f027e144285 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=cb919bfc-129c-4383-97f6-8417434dff53 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=293058c9-83d9-45d6-bc46-dad5f4579949 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=d70e6e41-65ba-4645-aa83-4b2ffae518c1 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=0d773578-e8c7-440f-abdd-f8d9ccb52ae7 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=9a22ea96-91cd-4124-a1ea-53ae5b69dad8 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=621c1f59-e4ed-4fd5-988f-3859485175e8 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=a7b3939f-f410-4701-babe-4c2df6801dda kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=ff438295-8af8-4bc5-8806-aa27e543743b kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=45a49a49-16c0-4c4d-91a0-7c1383a5859d kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=26d4b251-b333-49b1-9757-16fb0d469130 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=02508069-87cc-43a1-8251-369cd64bfef4 kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=c2fcc590-fada-48e0-a781-01e732ea7b8f kind=scrape
+2026/04/05 14:31:45 INFO recovering queued job jobID=63caa391-7898-4b83-b151-92f21ff9cf6a kind=scrape
+2026/04/05 14:31:45 INFO job recovery complete totalRecovered=120
+2026/04/05 14:31:45 INFO started periodic db checkpoint interval=5m
+2026/04/05 14:31:45 INFO running job jobID=453bf428-46ff-4c6a-9095-982521c5b70a kind=scrape request_id=453bf428-46ff-4c6a-9095-982521c5b70a
+2026/04/05 14:31:45 INFO running job jobID=f07f4a7b-8b56-46d2-81f6-6c47b06987c2 kind=scrape request_id=f07f4a7b-8b56-46d2-81f6-6c47b06987c2
+2026/04/05 14:31:45 INFO processing scrape job jobID=453bf428-46ff-4c6a-9095-982521c5b70a url=http://example.com/test request_id=""
+2026/04/05 14:31:45 INFO processing scrape job jobID=f07f4a7b-8b56-46d2-81f6-6c47b06987c2 url=http://example.com/test request_id=""
+2026/04/05 14:31:45 WARN HTTP request failed url=http://example.com/test error="Get \"http://example.com/test\": context canceled" attempt=0
+2026/04/05 14:31:45 WARN HTTP request failed url=http://example.com/test error="Get \"http://example.com/test\": context canceled" attempt=0
+2026/04/05 14:31:45 WARN HTTP probe failed url=http://example.com/test error="Get \"http://example.com/test\": context canceled"
+2026/04/05 14:31:45 WARN HTTP probe failed url=http://example.com/test error="Get \"http://example.com/test\": context canceled"
+2026/04/05 14:31:45 ERROR fetch failed url=http://example.com/test error="Get \"http://example.com/test\": context canceled"
+2026/04/05 14:31:45 ERROR fetch failed url=http://example.com/test error="Get \"http://example.com/test\": context canceled"
+2026/04/05 14:31:45 INFO job canceled during scrape jobID=f07f4a7b-8b56-46d2-81f6-6c47b06987c2
+2026/04/05 14:31:45 INFO job canceled during scrape jobID=453bf428-46ff-4c6a-9095-982521c5b70a
+2026/04/05 14:31:45 INFO running job jobID=81921d77-3f8d-43fc-a187-0865918121c9 kind=scrape request_id=81921d77-3f8d-43fc-a187-0865918121c9
+2026/04/05 14:31:45 INFO processing scrape job jobID=81921d77-3f8d-43fc-a187-0865918121c9 url=http://example.com/test request_id=""
+2026/04/05 14:31:45 INFO running job jobID=69cbdaee-b2f5-4400-9013-8f80ea8b5db2 kind=scrape request_id=69cbdaee-b2f5-4400-9013-8f80ea8b5db2
+2026/04/05 14:31:45 INFO processing scrape job jobID=69cbdaee-b2f5-4400-9013-8f80ea8b5db2 url=http://example.com/test request_id=""
+2026/04/05 14:31:45 WARN HTTP probe failed url=http://example.com/test error="context canceled"
+2026/04/05 14:31:45 ERROR fetch failed url=http://example.com/test error="context canceled"
+2026/04/05 14:31:45 INFO job canceled during scrape jobID=69cbdaee-b2f5-4400-9013-8f80ea8b5db2
+2026/04/05 14:31:45 INFO running job jobID=19374f59-d19f-4e62-8506-de7eeef8cff2 kind=scrape request_id=19374f59-d19f-4e62-8506-de7eeef8cff2
+2026/04/05 14:31:45 INFO processing scrape job jobID=19374f59-d19f-4e62-8506-de7eeef8cff2 url=http://example.com/test request_id=""
+2026/04/05 14:31:45 WARN HTTP probe failed url=http://example.com/test error="context canceled"
+2026/04/05 14:31:45 ERROR fetch failed url=http://example.com/test error="context canceled"
+2026/04/05 14:31:45 INFO job canceled during scrape jobID=19374f59-d19f-4e62-8506-de7eeef8cff2
+2026/04/05 14:31:45 INFO running job jobID=db232a30-1361-4cd9-a931-1d6a019e69ad kind=scrape request_id=db232a30-1361-4cd9-a931-1d6a019e69ad
+2026/04/05 14:31:45 INFO processing scrape job jobID=db232a30-1361-4cd9-a931-1d6a019e69ad url=http://example.com/test request_id=""
+2026/04/05 14:31:45 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:45 INFO job succeeded jobID=81921d77-3f8d-43fc-a187-0865918121c9
+2026/04/05 14:31:45 INFO running job jobID=1119f6d8-db21-4a23-9eaf-7421d546eaba kind=scrape request_id=1119f6d8-db21-4a23-9eaf-7421d546eaba
+2026/04/05 14:31:45 INFO processing scrape job jobID=1119f6d8-db21-4a23-9eaf-7421d546eaba url=http://example.com/test request_id=""
+2026/04/05 14:31:45 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:45 INFO job succeeded jobID=db232a30-1361-4cd9-a931-1d6a019e69ad
+2026/04/05 14:31:45 INFO running job jobID=1177edd3-3ae8-47b5-9723-6ff967a8bb88 kind=scrape request_id=1177edd3-3ae8-47b5-9723-6ff967a8bb88
+2026/04/05 14:31:45 INFO processing scrape job jobID=1177edd3-3ae8-47b5-9723-6ff967a8bb88 url=http://example.com/test request_id=""
+2026/04/05 14:31:45 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:45 INFO job succeeded jobID=1119f6d8-db21-4a23-9eaf-7421d546eaba
+2026/04/05 14:31:45 INFO running job jobID=d57ccf46-64dd-430d-9cfe-b15bc089b3a8 kind=scrape request_id=d57ccf46-64dd-430d-9cfe-b15bc089b3a8
+2026/04/05 14:31:45 INFO processing scrape job jobID=d57ccf46-64dd-430d-9cfe-b15bc089b3a8 url=http://example.com/test request_id=""
+2026/04/05 14:31:45 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:45 INFO job succeeded jobID=1177edd3-3ae8-47b5-9723-6ff967a8bb88
+2026/04/05 14:31:45 INFO running job jobID=dc986bf8-bac6-4013-b53d-b0aacf7b12b5 kind=scrape request_id=dc986bf8-bac6-4013-b53d-b0aacf7b12b5
+2026/04/05 14:31:45 INFO processing scrape job jobID=dc986bf8-bac6-4013-b53d-b0aacf7b12b5 url=http://example.com/test request_id=""
+2026/04/05 14:31:45 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:45 INFO job succeeded jobID=d57ccf46-64dd-430d-9cfe-b15bc089b3a8
+2026/04/05 14:31:45 INFO running job jobID=8fc97cfb-705a-43bd-b8ed-99d219738c21 kind=scrape request_id=8fc97cfb-705a-43bd-b8ed-99d219738c21
+2026/04/05 14:31:45 INFO processing scrape job jobID=8fc97cfb-705a-43bd-b8ed-99d219738c21 url=http://example.com/test request_id=""
+2026/04/05 14:31:45 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:45 INFO job succeeded jobID=dc986bf8-bac6-4013-b53d-b0aacf7b12b5
+2026/04/05 14:31:45 INFO running job jobID=8408019f-0c6d-4b8f-98aa-dd9df366036c kind=scrape request_id=8408019f-0c6d-4b8f-98aa-dd9df366036c
+2026/04/05 14:31:45 INFO processing scrape job jobID=8408019f-0c6d-4b8f-98aa-dd9df366036c url=http://example.com/test request_id=""
+2026/04/05 14:31:45 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:45 INFO job succeeded jobID=8fc97cfb-705a-43bd-b8ed-99d219738c21
+2026/04/05 14:31:45 INFO running job jobID=889d9710-f1d0-4beb-97de-b16aa613e8ab kind=scrape request_id=889d9710-f1d0-4beb-97de-b16aa613e8ab
+2026/04/05 14:31:45 INFO processing scrape job jobID=889d9710-f1d0-4beb-97de-b16aa613e8ab url=http://example.com/test request_id=""
+2026/04/05 14:31:45 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:45 INFO job succeeded jobID=8408019f-0c6d-4b8f-98aa-dd9df366036c
+2026/04/05 14:31:45 INFO running job jobID=c96d54b1-ce55-443c-84c6-bf5fb665e61c kind=scrape request_id=c96d54b1-ce55-443c-84c6-bf5fb665e61c
+2026/04/05 14:31:45 INFO processing scrape job jobID=c96d54b1-ce55-443c-84c6-bf5fb665e61c url=http://example.com/test request_id=""
+2026/04/05 14:31:45 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:45 INFO job succeeded jobID=889d9710-f1d0-4beb-97de-b16aa613e8ab
+2026/04/05 14:31:45 INFO running job jobID=421132f8-91fb-4387-a3c2-2755bdeeae0d kind=scrape request_id=421132f8-91fb-4387-a3c2-2755bdeeae0d
+2026/04/05 14:31:45 INFO processing scrape job jobID=421132f8-91fb-4387-a3c2-2755bdeeae0d url=http://example.com/test request_id=""
+2026/04/05 14:31:45 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:45 INFO job succeeded jobID=c96d54b1-ce55-443c-84c6-bf5fb665e61c
+2026/04/05 14:31:45 INFO running job jobID=4ad792df-8db2-43e0-9b61-f2b413c4b4fb kind=scrape request_id=4ad792df-8db2-43e0-9b61-f2b413c4b4fb
+2026/04/05 14:31:45 INFO processing scrape job jobID=4ad792df-8db2-43e0-9b61-f2b413c4b4fb url=http://example.com/test request_id=""
+2026/04/05 14:31:45 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:45 INFO job succeeded jobID=421132f8-91fb-4387-a3c2-2755bdeeae0d
+2026/04/05 14:31:45 INFO running job jobID=a802e09f-c4a9-4e41-9e0c-9c0ab3307599 kind=scrape request_id=a802e09f-c4a9-4e41-9e0c-9c0ab3307599
+2026/04/05 14:31:45 INFO processing scrape job jobID=a802e09f-c4a9-4e41-9e0c-9c0ab3307599 url=http://example.com/test request_id=""
+2026/04/05 14:31:45 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:45 INFO job succeeded jobID=4ad792df-8db2-43e0-9b61-f2b413c4b4fb
+2026/04/05 14:31:45 INFO running job jobID=e160e8de-eb0a-46ed-a681-18af921d42d8 kind=scrape request_id=e160e8de-eb0a-46ed-a681-18af921d42d8
+2026/04/05 14:31:45 INFO processing scrape job jobID=e160e8de-eb0a-46ed-a681-18af921d42d8 url=http://example.com/test request_id=""
+2026/04/05 14:31:45 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:45 INFO job succeeded jobID=a802e09f-c4a9-4e41-9e0c-9c0ab3307599
+2026/04/05 14:31:45 INFO running job jobID=78f68bcb-ed63-4e07-8746-c7090e3a70ff kind=scrape request_id=78f68bcb-ed63-4e07-8746-c7090e3a70ff
+2026/04/05 14:31:45 INFO processing scrape job jobID=78f68bcb-ed63-4e07-8746-c7090e3a70ff url=http://example.com/test request_id=""
+2026/04/05 14:31:45 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:45 INFO job succeeded jobID=e160e8de-eb0a-46ed-a681-18af921d42d8
+2026/04/05 14:31:45 INFO running job jobID=628892b7-cf11-44aa-a375-807a14ebf71d kind=scrape request_id=628892b7-cf11-44aa-a375-807a14ebf71d
+2026/04/05 14:31:45 INFO processing scrape job jobID=628892b7-cf11-44aa-a375-807a14ebf71d url=http://example.com/test request_id=""
+2026/04/05 14:31:45 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:45 INFO job succeeded jobID=78f68bcb-ed63-4e07-8746-c7090e3a70ff
+2026/04/05 14:31:45 INFO running job jobID=2885974d-38ba-41fd-b389-a4b0885198fb kind=scrape request_id=2885974d-38ba-41fd-b389-a4b0885198fb
+2026/04/05 14:31:45 INFO processing scrape job jobID=2885974d-38ba-41fd-b389-a4b0885198fb url=http://example.com/test request_id=""
+2026/04/05 14:31:45 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:45 INFO job succeeded jobID=628892b7-cf11-44aa-a375-807a14ebf71d
+2026/04/05 14:31:45 INFO running job jobID=2f104432-388e-407d-9689-57ee21b21df0 kind=scrape request_id=2f104432-388e-407d-9689-57ee21b21df0
+2026/04/05 14:31:45 INFO processing scrape job jobID=2f104432-388e-407d-9689-57ee21b21df0 url=http://example.com/test request_id=""
+2026/04/05 14:31:45 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:45 INFO job succeeded jobID=2885974d-38ba-41fd-b389-a4b0885198fb
+2026/04/05 14:31:45 INFO running job jobID=58830f07-1a29-434a-a4d3-7c32bc4695f3 kind=scrape request_id=58830f07-1a29-434a-a4d3-7c32bc4695f3
+2026/04/05 14:31:45 INFO processing scrape job jobID=58830f07-1a29-434a-a4d3-7c32bc4695f3 url=http://example.com/test request_id=""
+2026/04/05 14:31:45 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:45 INFO job succeeded jobID=2f104432-388e-407d-9689-57ee21b21df0
+2026/04/05 14:31:45 INFO running job jobID=f5d17155-a9ee-4ae0-a01a-b2480eccfff9 kind=scrape request_id=f5d17155-a9ee-4ae0-a01a-b2480eccfff9
+2026/04/05 14:31:45 INFO processing scrape job jobID=f5d17155-a9ee-4ae0-a01a-b2480eccfff9 url=http://example.com/test request_id=""
+2026/04/05 14:31:45 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:45 INFO job succeeded jobID=58830f07-1a29-434a-a4d3-7c32bc4695f3
+2026/04/05 14:31:45 INFO running job jobID=4564f054-30ed-4d10-ae7c-234e73e95417 kind=scrape request_id=4564f054-30ed-4d10-ae7c-234e73e95417
+2026/04/05 14:31:45 INFO processing scrape job jobID=4564f054-30ed-4d10-ae7c-234e73e95417 url=http://example.com/test request_id=""
+2026/04/05 14:31:45 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:45 INFO job succeeded jobID=f5d17155-a9ee-4ae0-a01a-b2480eccfff9
+2026/04/05 14:31:45 INFO running job jobID=0f707def-ae09-42f0-bd3b-d683ff82b9ed kind=scrape request_id=0f707def-ae09-42f0-bd3b-d683ff82b9ed
+2026/04/05 14:31:45 INFO processing scrape job jobID=0f707def-ae09-42f0-bd3b-d683ff82b9ed url=http://example.com/test request_id=""
+2026/04/05 14:31:45 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:45 INFO job succeeded jobID=4564f054-30ed-4d10-ae7c-234e73e95417
+2026/04/05 14:31:45 INFO running job jobID=7c6edcf2-1c30-417c-a42a-729fd26da3cc kind=scrape request_id=7c6edcf2-1c30-417c-a42a-729fd26da3cc
+2026/04/05 14:31:45 INFO processing scrape job jobID=7c6edcf2-1c30-417c-a42a-729fd26da3cc url=http://example.com/test request_id=""
+2026/04/05 14:31:45 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:45 INFO job succeeded jobID=0f707def-ae09-42f0-bd3b-d683ff82b9ed
+2026/04/05 14:31:45 INFO running job jobID=56b71ac2-9d2b-4566-b30b-3a3b5356fa41 kind=scrape request_id=56b71ac2-9d2b-4566-b30b-3a3b5356fa41
+2026/04/05 14:31:45 INFO processing scrape job jobID=56b71ac2-9d2b-4566-b30b-3a3b5356fa41 url=http://example.com/test request_id=""
+2026/04/05 14:31:46 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:46 INFO job succeeded jobID=7c6edcf2-1c30-417c-a42a-729fd26da3cc
+2026/04/05 14:31:46 INFO running job jobID=d7ec361c-e5ee-4bb6-8e7d-c9e1a9debbdf kind=scrape request_id=d7ec361c-e5ee-4bb6-8e7d-c9e1a9debbdf
+2026/04/05 14:31:46 INFO processing scrape job jobID=d7ec361c-e5ee-4bb6-8e7d-c9e1a9debbdf url=http://example.com/test request_id=""
+2026/04/05 14:31:46 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:46 INFO job succeeded jobID=56b71ac2-9d2b-4566-b30b-3a3b5356fa41
+2026/04/05 14:31:46 INFO running job jobID=6cacc228-8092-422c-81dd-aaf1b29aab12 kind=scrape request_id=6cacc228-8092-422c-81dd-aaf1b29aab12
+2026/04/05 14:31:46 INFO processing scrape job jobID=6cacc228-8092-422c-81dd-aaf1b29aab12 url=http://example.com/test request_id=""
+2026/04/05 14:31:46 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:46 INFO job succeeded jobID=d7ec361c-e5ee-4bb6-8e7d-c9e1a9debbdf
+2026/04/05 14:31:46 INFO running job jobID=341e7d3c-b4e6-4d77-87ae-f101964610db kind=scrape request_id=341e7d3c-b4e6-4d77-87ae-f101964610db
+2026/04/05 14:31:46 INFO processing scrape job jobID=341e7d3c-b4e6-4d77-87ae-f101964610db url=http://example.com/test request_id=""
+2026/04/05 14:31:46 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:46 INFO job succeeded jobID=6cacc228-8092-422c-81dd-aaf1b29aab12
+2026/04/05 14:31:46 INFO running job jobID=02ad6d97-c933-4ac0-96da-5b8f8b463609 kind=scrape request_id=02ad6d97-c933-4ac0-96da-5b8f8b463609
+2026/04/05 14:31:46 INFO processing scrape job jobID=02ad6d97-c933-4ac0-96da-5b8f8b463609 url=http://example.com/test request_id=""
+2026/04/05 14:31:46 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:46 INFO job succeeded jobID=341e7d3c-b4e6-4d77-87ae-f101964610db
+2026/04/05 14:31:46 INFO running job jobID=846dd5a1-324b-4921-9d68-4609846bf824 kind=scrape request_id=846dd5a1-324b-4921-9d68-4609846bf824
+2026/04/05 14:31:46 INFO processing scrape job jobID=846dd5a1-324b-4921-9d68-4609846bf824 url=http://example.com/test request_id=""
+2026/04/05 14:31:46 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:46 INFO job succeeded jobID=02ad6d97-c933-4ac0-96da-5b8f8b463609
+2026/04/05 14:31:46 INFO running job jobID=2eae2e7b-fa5b-4630-bbdb-675b5232c995 kind=scrape request_id=2eae2e7b-fa5b-4630-bbdb-675b5232c995
+2026/04/05 14:31:46 INFO processing scrape job jobID=2eae2e7b-fa5b-4630-bbdb-675b5232c995 url=http://example.com/test request_id=""
+2026/04/05 14:31:46 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:46 INFO job succeeded jobID=846dd5a1-324b-4921-9d68-4609846bf824
+2026/04/05 14:31:46 INFO running job jobID=ec5d557c-e73e-4816-9c54-89fe8def60f3 kind=scrape request_id=ec5d557c-e73e-4816-9c54-89fe8def60f3
+2026/04/05 14:31:46 INFO processing scrape job jobID=ec5d557c-e73e-4816-9c54-89fe8def60f3 url=http://example.com/test request_id=""
+2026/04/05 14:31:46 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:46 INFO job succeeded jobID=2eae2e7b-fa5b-4630-bbdb-675b5232c995
+2026/04/05 14:31:46 INFO running job jobID=cdaff712-c660-4ada-9f04-3a67e22e6182 kind=scrape request_id=cdaff712-c660-4ada-9f04-3a67e22e6182
+2026/04/05 14:31:46 INFO processing scrape job jobID=cdaff712-c660-4ada-9f04-3a67e22e6182 url=http://example.com/test request_id=""
+2026/04/05 14:31:46 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:46 INFO job succeeded jobID=ec5d557c-e73e-4816-9c54-89fe8def60f3
+2026/04/05 14:31:46 INFO running job jobID=5c5cbc7b-a625-4cda-b6ca-48f913cc04ab kind=scrape request_id=5c5cbc7b-a625-4cda-b6ca-48f913cc04ab
+2026/04/05 14:31:46 INFO processing scrape job jobID=5c5cbc7b-a625-4cda-b6ca-48f913cc04ab url=http://example.com/test request_id=""
+2026/04/05 14:31:46 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:46 INFO job succeeded jobID=cdaff712-c660-4ada-9f04-3a67e22e6182
+2026/04/05 14:31:46 INFO running job jobID=8107e6aa-a7af-49e8-adfb-891d0903efe5 kind=scrape request_id=8107e6aa-a7af-49e8-adfb-891d0903efe5
+2026/04/05 14:31:46 INFO processing scrape job jobID=8107e6aa-a7af-49e8-adfb-891d0903efe5 url=http://example.com/test request_id=""
+2026/04/05 14:31:46 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:46 INFO job succeeded jobID=5c5cbc7b-a625-4cda-b6ca-48f913cc04ab
+2026/04/05 14:31:46 INFO running job jobID=c055d630-dacc-4c5f-b7e1-e3a4503a8a4f kind=scrape request_id=c055d630-dacc-4c5f-b7e1-e3a4503a8a4f
+2026/04/05 14:31:46 INFO processing scrape job jobID=c055d630-dacc-4c5f-b7e1-e3a4503a8a4f url=http://example.com/test request_id=""
+2026/04/05 14:31:46 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:46 INFO job succeeded jobID=8107e6aa-a7af-49e8-adfb-891d0903efe5
+2026/04/05 14:31:46 INFO running job jobID=4f5b451d-2ad1-4c3d-a1f5-e1dea45f22c8 kind=scrape request_id=4f5b451d-2ad1-4c3d-a1f5-e1dea45f22c8
+2026/04/05 14:31:46 INFO processing scrape job jobID=4f5b451d-2ad1-4c3d-a1f5-e1dea45f22c8 url=http://example.com/test request_id=""
+2026/04/05 14:31:46 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:46 INFO job succeeded jobID=c055d630-dacc-4c5f-b7e1-e3a4503a8a4f
+2026/04/05 14:31:46 INFO running job jobID=cd71d1ec-77d2-4ca8-a80e-3815eaed8ab8 kind=scrape request_id=cd71d1ec-77d2-4ca8-a80e-3815eaed8ab8
+2026/04/05 14:31:46 INFO processing scrape job jobID=cd71d1ec-77d2-4ca8-a80e-3815eaed8ab8 url=http://example.com/test request_id=""
+2026/04/05 14:31:46 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:46 INFO job succeeded jobID=4f5b451d-2ad1-4c3d-a1f5-e1dea45f22c8
+2026/04/05 14:31:46 INFO running job jobID=07e79947-3381-40da-aefb-f5b01983cfad kind=scrape request_id=07e79947-3381-40da-aefb-f5b01983cfad
+2026/04/05 14:31:46 INFO processing scrape job jobID=07e79947-3381-40da-aefb-f5b01983cfad url=http://example.com/test request_id=""
+2026/04/05 14:31:47 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:47 INFO job succeeded jobID=cd71d1ec-77d2-4ca8-a80e-3815eaed8ab8
+2026/04/05 14:31:47 INFO running job jobID=04bf4ed7-b314-4fa5-9a8f-5bdf69bc2c4c kind=scrape request_id=04bf4ed7-b314-4fa5-9a8f-5bdf69bc2c4c
+2026/04/05 14:31:47 INFO processing scrape job jobID=04bf4ed7-b314-4fa5-9a8f-5bdf69bc2c4c url=http://example.com/test request_id=""
+2026/04/05 14:31:47 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:47 INFO job succeeded jobID=07e79947-3381-40da-aefb-f5b01983cfad
+2026/04/05 14:31:47 INFO running job jobID=7170b4ff-9251-4527-a0cc-5b78f3e520f6 kind=scrape request_id=7170b4ff-9251-4527-a0cc-5b78f3e520f6
+2026/04/05 14:31:47 INFO processing scrape job jobID=7170b4ff-9251-4527-a0cc-5b78f3e520f6 url=http://example.com/test request_id=""
+2026/04/05 14:31:47 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:47 INFO job succeeded jobID=04bf4ed7-b314-4fa5-9a8f-5bdf69bc2c4c
+2026/04/05 14:31:47 INFO running job jobID=9bdebdd7-337c-4cd7-a314-83280be3861f kind=scrape request_id=9bdebdd7-337c-4cd7-a314-83280be3861f
+2026/04/05 14:31:47 INFO processing scrape job jobID=9bdebdd7-337c-4cd7-a314-83280be3861f url=http://example.com/test request_id=""
+2026/04/05 14:31:47 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:47 INFO job succeeded jobID=7170b4ff-9251-4527-a0cc-5b78f3e520f6
+2026/04/05 14:31:47 INFO running job jobID=bb8c81bd-acf3-4795-9919-cc44d141dbc6 kind=scrape request_id=bb8c81bd-acf3-4795-9919-cc44d141dbc6
+2026/04/05 14:31:47 INFO processing scrape job jobID=bb8c81bd-acf3-4795-9919-cc44d141dbc6 url=http://example.com/test request_id=""
+2026/04/05 14:31:47 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:47 INFO job succeeded jobID=9bdebdd7-337c-4cd7-a314-83280be3861f
+2026/04/05 14:31:47 INFO running job jobID=be0d8fda-c3d9-4942-8505-ad4c14ed5b90 kind=scrape request_id=be0d8fda-c3d9-4942-8505-ad4c14ed5b90
+2026/04/05 14:31:47 INFO processing scrape job jobID=be0d8fda-c3d9-4942-8505-ad4c14ed5b90 url=http://example.com/test request_id=""
+2026/04/05 14:31:47 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:47 INFO job succeeded jobID=bb8c81bd-acf3-4795-9919-cc44d141dbc6
+2026/04/05 14:31:47 INFO running job jobID=804519a7-0bef-4943-8973-820242d78e9d kind=scrape request_id=804519a7-0bef-4943-8973-820242d78e9d
+2026/04/05 14:31:47 INFO processing scrape job jobID=804519a7-0bef-4943-8973-820242d78e9d url=http://example.com/test request_id=""
+2026/04/05 14:31:47 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:47 INFO job succeeded jobID=be0d8fda-c3d9-4942-8505-ad4c14ed5b90
+2026/04/05 14:31:47 INFO running job jobID=395047b3-08b0-4edd-8b6f-83994c709eaf kind=scrape request_id=395047b3-08b0-4edd-8b6f-83994c709eaf
+2026/04/05 14:31:47 INFO processing scrape job jobID=395047b3-08b0-4edd-8b6f-83994c709eaf url=http://example.com/test request_id=""
+2026/04/05 14:31:47 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:47 INFO job succeeded jobID=804519a7-0bef-4943-8973-820242d78e9d
+2026/04/05 14:31:47 INFO running job jobID=13abef96-668e-483b-b337-78935233aa4b kind=scrape request_id=13abef96-668e-483b-b337-78935233aa4b
+2026/04/05 14:31:47 INFO processing scrape job jobID=13abef96-668e-483b-b337-78935233aa4b url=http://example.com/test request_id=""
+2026/04/05 14:31:47 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:47 INFO job succeeded jobID=395047b3-08b0-4edd-8b6f-83994c709eaf
+2026/04/05 14:31:47 INFO running job jobID=4cc25ca9-5bf3-4e06-8c93-074672d027d5 kind=scrape request_id=4cc25ca9-5bf3-4e06-8c93-074672d027d5
+2026/04/05 14:31:47 INFO processing scrape job jobID=4cc25ca9-5bf3-4e06-8c93-074672d027d5 url=http://example.com/test request_id=""
+2026/04/05 14:31:47 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:47 INFO job succeeded jobID=13abef96-668e-483b-b337-78935233aa4b
+2026/04/05 14:31:47 INFO running job jobID=76e0b8c9-a3cb-488f-807c-fada2ef31f3d kind=scrape request_id=76e0b8c9-a3cb-488f-807c-fada2ef31f3d
+2026/04/05 14:31:47 INFO processing scrape job jobID=76e0b8c9-a3cb-488f-807c-fada2ef31f3d url=http://example.com/test request_id=""
+2026/04/05 14:31:48 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:48 INFO job succeeded jobID=4cc25ca9-5bf3-4e06-8c93-074672d027d5
+2026/04/05 14:31:48 INFO running job jobID=d66571e5-f704-45ba-9b7b-1b3f643b1e13 kind=scrape request_id=d66571e5-f704-45ba-9b7b-1b3f643b1e13
+2026/04/05 14:31:48 INFO processing scrape job jobID=d66571e5-f704-45ba-9b7b-1b3f643b1e13 url=http://example.com/test request_id=""
+2026/04/05 14:31:48 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:48 INFO job succeeded jobID=76e0b8c9-a3cb-488f-807c-fada2ef31f3d
+2026/04/05 14:31:48 INFO running job jobID=211c3b8e-64ae-4759-977d-305739e6b9c9 kind=scrape request_id=211c3b8e-64ae-4759-977d-305739e6b9c9
+2026/04/05 14:31:48 INFO processing scrape job jobID=211c3b8e-64ae-4759-977d-305739e6b9c9 url=http://example.com/test request_id=""
+2026/04/05 14:31:48 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:48 INFO job succeeded jobID=d66571e5-f704-45ba-9b7b-1b3f643b1e13
+2026/04/05 14:31:48 INFO running job jobID=9c781a78-7a95-44a2-9c79-14af31dc00cb kind=scrape request_id=9c781a78-7a95-44a2-9c79-14af31dc00cb
+2026/04/05 14:31:48 INFO processing scrape job jobID=9c781a78-7a95-44a2-9c79-14af31dc00cb url=http://example.com/test request_id=""
+2026/04/05 14:31:48 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:48 INFO job succeeded jobID=211c3b8e-64ae-4759-977d-305739e6b9c9
+2026/04/05 14:31:48 INFO running job jobID=845f5355-ddaa-4919-bf8d-d5df0dcec47c kind=scrape request_id=845f5355-ddaa-4919-bf8d-d5df0dcec47c
+2026/04/05 14:31:48 INFO processing scrape job jobID=845f5355-ddaa-4919-bf8d-d5df0dcec47c url=http://example.com/test request_id=""
+2026/04/05 14:31:48 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:48 INFO job succeeded jobID=9c781a78-7a95-44a2-9c79-14af31dc00cb
+2026/04/05 14:31:48 INFO running job jobID=6be75c97-ed53-48da-8a69-c098d333da7c kind=scrape request_id=6be75c97-ed53-48da-8a69-c098d333da7c
+2026/04/05 14:31:48 INFO processing scrape job jobID=6be75c97-ed53-48da-8a69-c098d333da7c url=http://example.com/test request_id=""
+2026/04/05 14:31:48 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:48 INFO job succeeded jobID=845f5355-ddaa-4919-bf8d-d5df0dcec47c
+2026/04/05 14:31:48 INFO running job jobID=25dfa87f-1a76-414e-8f2d-f2ab77366b18 kind=scrape request_id=25dfa87f-1a76-414e-8f2d-f2ab77366b18
+2026/04/05 14:31:48 INFO processing scrape job jobID=25dfa87f-1a76-414e-8f2d-f2ab77366b18 url=http://example.com/test request_id=""
+2026/04/05 14:31:48 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:48 INFO job succeeded jobID=6be75c97-ed53-48da-8a69-c098d333da7c
+2026/04/05 14:31:48 INFO running job jobID=b20d14a9-7813-4cc8-91e5-75b85e6380ac kind=scrape request_id=b20d14a9-7813-4cc8-91e5-75b85e6380ac
+2026/04/05 14:31:48 INFO processing scrape job jobID=b20d14a9-7813-4cc8-91e5-75b85e6380ac url=http://example.com/test request_id=""
+2026/04/05 14:31:48 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:48 INFO job succeeded jobID=25dfa87f-1a76-414e-8f2d-f2ab77366b18
+2026/04/05 14:31:48 INFO running job jobID=4f3fa5bb-797f-4356-84ea-10f4bd30bef7 kind=scrape request_id=4f3fa5bb-797f-4356-84ea-10f4bd30bef7
+2026/04/05 14:31:48 INFO processing scrape job jobID=4f3fa5bb-797f-4356-84ea-10f4bd30bef7 url=http://example.com/test request_id=""
+2026/04/05 14:31:48 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:48 INFO job succeeded jobID=b20d14a9-7813-4cc8-91e5-75b85e6380ac
+2026/04/05 14:31:48 INFO running job jobID=a1fd8746-2d41-41bf-b5f0-cfa86bfd47fd kind=scrape request_id=a1fd8746-2d41-41bf-b5f0-cfa86bfd47fd
+2026/04/05 14:31:48 INFO processing scrape job jobID=a1fd8746-2d41-41bf-b5f0-cfa86bfd47fd url=http://example.com/test request_id=""
+2026/04/05 14:31:48 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:48 INFO job succeeded jobID=4f3fa5bb-797f-4356-84ea-10f4bd30bef7
+2026/04/05 14:31:49 INFO running job jobID=70880db7-b632-49b9-ab81-15f09c060af5 kind=scrape request_id=70880db7-b632-49b9-ab81-15f09c060af5
+2026/04/05 14:31:49 INFO processing scrape job jobID=70880db7-b632-49b9-ab81-15f09c060af5 url=http://example.com/test request_id=""
+2026/04/05 14:31:49 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:49 INFO job succeeded jobID=a1fd8746-2d41-41bf-b5f0-cfa86bfd47fd
+2026/04/05 14:31:49 INFO running job jobID=379eba61-0172-4253-afd8-32237f581bc7 kind=scrape request_id=379eba61-0172-4253-afd8-32237f581bc7
+2026/04/05 14:31:49 INFO processing scrape job jobID=379eba61-0172-4253-afd8-32237f581bc7 url=http://example.com/test request_id=""
+2026/04/05 14:31:49 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:49 INFO job succeeded jobID=70880db7-b632-49b9-ab81-15f09c060af5
+2026/04/05 14:31:49 INFO running job jobID=36878c1c-698c-402b-93d0-022e60273087 kind=scrape request_id=36878c1c-698c-402b-93d0-022e60273087
+2026/04/05 14:31:49 INFO processing scrape job jobID=36878c1c-698c-402b-93d0-022e60273087 url=http://example.com/test request_id=""
+2026/04/05 14:31:49 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:49 INFO job succeeded jobID=379eba61-0172-4253-afd8-32237f581bc7
+2026/04/05 14:31:49 INFO running job jobID=3dfc2779-a05b-40aa-84b9-c624da38412b kind=scrape request_id=3dfc2779-a05b-40aa-84b9-c624da38412b
+2026/04/05 14:31:49 INFO processing scrape job jobID=3dfc2779-a05b-40aa-84b9-c624da38412b url=http://example.com/test request_id=""
+2026/04/05 14:31:49 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:49 INFO job succeeded jobID=36878c1c-698c-402b-93d0-022e60273087
+2026/04/05 14:31:49 INFO running job jobID=7d6b2d31-b92c-4362-bd37-f65f43768f5d kind=scrape request_id=7d6b2d31-b92c-4362-bd37-f65f43768f5d
+2026/04/05 14:31:49 INFO processing scrape job jobID=7d6b2d31-b92c-4362-bd37-f65f43768f5d url=http://example.com/test request_id=""
+2026/04/05 14:31:49 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:49 INFO job succeeded jobID=3dfc2779-a05b-40aa-84b9-c624da38412b
+2026/04/05 14:31:49 INFO running job jobID=c34b84b4-d19e-4149-89ff-0ff4aab13f93 kind=scrape request_id=c34b84b4-d19e-4149-89ff-0ff4aab13f93
+2026/04/05 14:31:49 INFO processing scrape job jobID=c34b84b4-d19e-4149-89ff-0ff4aab13f93 url=http://example.com/test request_id=""
+2026/04/05 14:31:49 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:49 INFO job succeeded jobID=7d6b2d31-b92c-4362-bd37-f65f43768f5d
+2026/04/05 14:31:49 INFO running job jobID=bada2626-f840-4231-9f72-4d90363e3a6f kind=scrape request_id=bada2626-f840-4231-9f72-4d90363e3a6f
+2026/04/05 14:31:49 INFO processing scrape job jobID=bada2626-f840-4231-9f72-4d90363e3a6f url=http://example.com/test request_id=""
+2026/04/05 14:31:49 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:49 INFO job succeeded jobID=c34b84b4-d19e-4149-89ff-0ff4aab13f93
+2026/04/05 14:31:49 INFO running job jobID=821a33a2-9621-49dc-ba3f-a11c34324b2a kind=scrape request_id=821a33a2-9621-49dc-ba3f-a11c34324b2a
+2026/04/05 14:31:49 INFO processing scrape job jobID=821a33a2-9621-49dc-ba3f-a11c34324b2a url=http://example.com/test request_id=""
+2026/04/05 14:31:49 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:49 INFO job succeeded jobID=bada2626-f840-4231-9f72-4d90363e3a6f
+2026/04/05 14:31:49 INFO running job jobID=4ac52cdb-2eee-496f-b2e7-9f6bf44a906e kind=scrape request_id=4ac52cdb-2eee-496f-b2e7-9f6bf44a906e
+2026/04/05 14:31:49 INFO processing scrape job jobID=4ac52cdb-2eee-496f-b2e7-9f6bf44a906e url=http://example.com/test request_id=""
+2026/04/05 14:31:49 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:49 INFO job succeeded jobID=821a33a2-9621-49dc-ba3f-a11c34324b2a
+2026/04/05 14:31:49 INFO running job jobID=e7494103-2882-4bb9-9382-1f65be722837 kind=scrape request_id=e7494103-2882-4bb9-9382-1f65be722837
+2026/04/05 14:31:49 INFO processing scrape job jobID=e7494103-2882-4bb9-9382-1f65be722837 url=http://example.com/test request_id=""
+2026/04/05 14:31:49 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:49 INFO job succeeded jobID=4ac52cdb-2eee-496f-b2e7-9f6bf44a906e
+2026/04/05 14:31:49 INFO running job jobID=1d49950c-9f56-4b58-b2b6-e08e47e033a6 kind=scrape request_id=1d49950c-9f56-4b58-b2b6-e08e47e033a6
+2026/04/05 14:31:49 INFO processing scrape job jobID=1d49950c-9f56-4b58-b2b6-e08e47e033a6 url=http://example.com/test request_id=""
+2026/04/05 14:31:50 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:50 INFO job succeeded jobID=e7494103-2882-4bb9-9382-1f65be722837
+2026/04/05 14:31:50 INFO running job jobID=7a90c13d-314b-4d2a-b2fe-66d27045baa3 kind=scrape request_id=7a90c13d-314b-4d2a-b2fe-66d27045baa3
+2026/04/05 14:31:50 INFO processing scrape job jobID=7a90c13d-314b-4d2a-b2fe-66d27045baa3 url=http://example.com/test request_id=""
+2026/04/05 14:31:50 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:50 INFO job succeeded jobID=1d49950c-9f56-4b58-b2b6-e08e47e033a6
+2026/04/05 14:31:50 INFO running job jobID=26b288e5-b7c0-4b66-b826-258d72e5688a kind=scrape request_id=26b288e5-b7c0-4b66-b826-258d72e5688a
+2026/04/05 14:31:50 INFO processing scrape job jobID=26b288e5-b7c0-4b66-b826-258d72e5688a url=http://example.com/test request_id=""
+2026/04/05 14:31:50 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:50 INFO job succeeded jobID=7a90c13d-314b-4d2a-b2fe-66d27045baa3
+2026/04/05 14:31:50 INFO running job jobID=22b8d630-0356-45e7-b7c7-3b4dfde2bc84 kind=scrape request_id=22b8d630-0356-45e7-b7c7-3b4dfde2bc84
+2026/04/05 14:31:50 INFO processing scrape job jobID=22b8d630-0356-45e7-b7c7-3b4dfde2bc84 url=http://example.com/test request_id=""
+2026/04/05 14:31:50 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:50 INFO job succeeded jobID=26b288e5-b7c0-4b66-b826-258d72e5688a
+2026/04/05 14:31:50 INFO running job jobID=eec6281e-b44a-4639-8ec4-484697c4808a kind=scrape request_id=eec6281e-b44a-4639-8ec4-484697c4808a
+2026/04/05 14:31:50 INFO processing scrape job jobID=eec6281e-b44a-4639-8ec4-484697c4808a url=http://example.com/test request_id=""
+2026/04/05 14:31:50 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:50 INFO job succeeded jobID=22b8d630-0356-45e7-b7c7-3b4dfde2bc84
+2026/04/05 14:31:50 INFO running job jobID=c058eece-2221-41d8-8168-75afcc2fe440 kind=scrape request_id=c058eece-2221-41d8-8168-75afcc2fe440
+2026/04/05 14:31:50 INFO processing scrape job jobID=c058eece-2221-41d8-8168-75afcc2fe440 url=http://example.com/test request_id=""
+2026/04/05 14:31:50 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:50 INFO job succeeded jobID=eec6281e-b44a-4639-8ec4-484697c4808a
+2026/04/05 14:31:50 INFO running job jobID=afeaab71-af98-448b-a768-aff5fd100628 kind=scrape request_id=afeaab71-af98-448b-a768-aff5fd100628
+2026/04/05 14:31:50 INFO processing scrape job jobID=afeaab71-af98-448b-a768-aff5fd100628 url=http://example.com/test request_id=""
+2026/04/05 14:31:50 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:50 INFO job succeeded jobID=c058eece-2221-41d8-8168-75afcc2fe440
+2026/04/05 14:31:50 INFO running job jobID=e0c0072e-aa03-4ca6-bced-228ece6d7a58 kind=scrape request_id=e0c0072e-aa03-4ca6-bced-228ece6d7a58
+2026/04/05 14:31:50 INFO processing scrape job jobID=e0c0072e-aa03-4ca6-bced-228ece6d7a58 url=http://example.com/test request_id=""
+2026/04/05 14:31:50 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:50 INFO job succeeded jobID=afeaab71-af98-448b-a768-aff5fd100628
+2026/04/05 14:31:50 INFO running job jobID=61570db2-a684-463b-a28d-88ed4bab430a kind=scrape request_id=61570db2-a684-463b-a28d-88ed4bab430a
+2026/04/05 14:31:50 INFO processing scrape job jobID=61570db2-a684-463b-a28d-88ed4bab430a url=http://example.com/test request_id=""
+2026/04/05 14:31:50 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:50 INFO job succeeded jobID=e0c0072e-aa03-4ca6-bced-228ece6d7a58
+2026/04/05 14:31:50 INFO running job jobID=364a84b5-ba20-4843-ad16-0e9485e8c880 kind=scrape request_id=364a84b5-ba20-4843-ad16-0e9485e8c880
+2026/04/05 14:31:50 INFO processing scrape job jobID=364a84b5-ba20-4843-ad16-0e9485e8c880 url=http://example.com/test request_id=""
+2026/04/05 14:31:50 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:50 INFO job succeeded jobID=61570db2-a684-463b-a28d-88ed4bab430a
+2026/04/05 14:31:50 INFO running job jobID=d866acdd-8b58-4a42-8343-4f49e0dfcbd6 kind=scrape request_id=d866acdd-8b58-4a42-8343-4f49e0dfcbd6
+2026/04/05 14:31:50 INFO processing scrape job jobID=d866acdd-8b58-4a42-8343-4f49e0dfcbd6 url=http://example.com/test request_id=""
+2026/04/05 14:31:51 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:51 INFO job succeeded jobID=364a84b5-ba20-4843-ad16-0e9485e8c880
+2026/04/05 14:31:51 INFO running job jobID=29c07266-712c-4d49-8470-128907c29b8e kind=scrape request_id=29c07266-712c-4d49-8470-128907c29b8e
+2026/04/05 14:31:51 INFO processing scrape job jobID=29c07266-712c-4d49-8470-128907c29b8e url=http://example.com/test request_id=""
+2026/04/05 14:31:51 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:51 INFO job succeeded jobID=d866acdd-8b58-4a42-8343-4f49e0dfcbd6
+2026/04/05 14:31:51 INFO running job jobID=d986bf0f-778d-485e-9f4c-5828786767ae kind=scrape request_id=d986bf0f-778d-485e-9f4c-5828786767ae
+2026/04/05 14:31:51 INFO processing scrape job jobID=d986bf0f-778d-485e-9f4c-5828786767ae url=http://example.com/test request_id=""
+2026/04/05 14:31:51 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:51 INFO job succeeded jobID=29c07266-712c-4d49-8470-128907c29b8e
+2026/04/05 14:31:51 INFO running job jobID=7276b521-f21a-410d-80eb-6e9e6fdf59d2 kind=scrape request_id=7276b521-f21a-410d-80eb-6e9e6fdf59d2
+2026/04/05 14:31:51 INFO processing scrape job jobID=7276b521-f21a-410d-80eb-6e9e6fdf59d2 url=http://example.com/test request_id=""
+2026/04/05 14:31:51 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:51 INFO job succeeded jobID=d986bf0f-778d-485e-9f4c-5828786767ae
+2026/04/05 14:31:51 INFO running job jobID=d0c4864b-ac83-44ea-91d3-16dca11723db kind=scrape request_id=d0c4864b-ac83-44ea-91d3-16dca11723db
+2026/04/05 14:31:51 INFO processing scrape job jobID=d0c4864b-ac83-44ea-91d3-16dca11723db url=http://example.com/test request_id=""
+2026/04/05 14:31:51 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:51 INFO job succeeded jobID=7276b521-f21a-410d-80eb-6e9e6fdf59d2
+2026/04/05 14:31:51 INFO running job jobID=5ed334ce-933c-4406-9dc2-f3342adcc555 kind=scrape request_id=5ed334ce-933c-4406-9dc2-f3342adcc555
+2026/04/05 14:31:51 INFO processing scrape job jobID=5ed334ce-933c-4406-9dc2-f3342adcc555 url=http://example.com/test request_id=""
+2026/04/05 14:31:51 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:51 INFO job succeeded jobID=d0c4864b-ac83-44ea-91d3-16dca11723db
+2026/04/05 14:31:51 INFO running job jobID=c85a2dc0-7504-4c43-a02a-46c448ceea0b kind=scrape request_id=c85a2dc0-7504-4c43-a02a-46c448ceea0b
+2026/04/05 14:31:51 INFO processing scrape job jobID=c85a2dc0-7504-4c43-a02a-46c448ceea0b url=http://example.com/test request_id=""
+2026/04/05 14:31:51 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:51 INFO job succeeded jobID=5ed334ce-933c-4406-9dc2-f3342adcc555
+2026/04/05 14:31:51 INFO running job jobID=f6d8dd16-b40d-4e42-96c8-862a6b210550 kind=scrape request_id=f6d8dd16-b40d-4e42-96c8-862a6b210550
+2026/04/05 14:31:51 INFO processing scrape job jobID=f6d8dd16-b40d-4e42-96c8-862a6b210550 url=http://example.com/test request_id=""
+2026/04/05 14:31:51 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:51 INFO job succeeded jobID=c85a2dc0-7504-4c43-a02a-46c448ceea0b
+2026/04/05 14:31:51 INFO running job jobID=9790f8ef-1e04-4ab8-8651-21793dff9154 kind=scrape request_id=9790f8ef-1e04-4ab8-8651-21793dff9154
+2026/04/05 14:31:51 INFO processing scrape job jobID=9790f8ef-1e04-4ab8-8651-21793dff9154 url=http://example.com/test request_id=""
+2026/04/05 14:31:51 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:51 INFO job succeeded jobID=f6d8dd16-b40d-4e42-96c8-862a6b210550
+2026/04/05 14:31:51 INFO running job jobID=1cfe9145-f646-4fd3-a06a-6cee937cef32 kind=scrape request_id=1cfe9145-f646-4fd3-a06a-6cee937cef32
+2026/04/05 14:31:51 INFO processing scrape job jobID=1cfe9145-f646-4fd3-a06a-6cee937cef32 url=http://example.com/test request_id=""
+2026/04/05 14:31:52 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:52 INFO job succeeded jobID=9790f8ef-1e04-4ab8-8651-21793dff9154
+2026/04/05 14:31:52 INFO running job jobID=e6129af6-fd62-4df6-a928-64b9e67259b6 kind=scrape request_id=e6129af6-fd62-4df6-a928-64b9e67259b6
+2026/04/05 14:31:52 INFO processing scrape job jobID=e6129af6-fd62-4df6-a928-64b9e67259b6 url=http://example.com/test request_id=""
+2026/04/05 14:31:52 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:52 INFO job succeeded jobID=1cfe9145-f646-4fd3-a06a-6cee937cef32
+2026/04/05 14:31:52 INFO running job jobID=1d1f335e-c99b-47fc-a89a-6672d16ce81c kind=scrape request_id=1d1f335e-c99b-47fc-a89a-6672d16ce81c
+2026/04/05 14:31:52 INFO processing scrape job jobID=1d1f335e-c99b-47fc-a89a-6672d16ce81c url=http://example.com/test request_id=""
+2026/04/05 14:31:52 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:52 INFO job succeeded jobID=e6129af6-fd62-4df6-a928-64b9e67259b6
+2026/04/05 14:31:52 INFO running job jobID=e48306e9-5e1d-4cac-a3bf-eb9da1cd8533 kind=scrape request_id=e48306e9-5e1d-4cac-a3bf-eb9da1cd8533
+2026/04/05 14:31:52 INFO processing scrape job jobID=e48306e9-5e1d-4cac-a3bf-eb9da1cd8533 url=http://example.com/test request_id=""
+2026/04/05 14:31:52 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:52 INFO job succeeded jobID=1d1f335e-c99b-47fc-a89a-6672d16ce81c
+2026/04/05 14:31:52 INFO running job jobID=01c99de4-193c-42b5-995b-6cf703ab4295 kind=scrape request_id=01c99de4-193c-42b5-995b-6cf703ab4295
+2026/04/05 14:31:52 INFO processing scrape job jobID=01c99de4-193c-42b5-995b-6cf703ab4295 url=http://example.com/test request_id=""
+2026/04/05 14:31:52 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:52 INFO job succeeded jobID=e48306e9-5e1d-4cac-a3bf-eb9da1cd8533
+2026/04/05 14:31:52 INFO running job jobID=9a178cce-3774-4253-8292-3606eb023031 kind=scrape request_id=9a178cce-3774-4253-8292-3606eb023031
+2026/04/05 14:31:52 INFO processing scrape job jobID=9a178cce-3774-4253-8292-3606eb023031 url=http://example.com/test request_id=""
+2026/04/05 14:31:52 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:52 INFO job succeeded jobID=01c99de4-193c-42b5-995b-6cf703ab4295
+2026/04/05 14:31:52 INFO running job jobID=d6f72984-d01f-418b-bd8e-0434a0b0fe61 kind=scrape request_id=d6f72984-d01f-418b-bd8e-0434a0b0fe61
+2026/04/05 14:31:52 INFO processing scrape job jobID=d6f72984-d01f-418b-bd8e-0434a0b0fe61 url=http://example.com/test request_id=""
+2026/04/05 14:31:52 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:52 INFO job succeeded jobID=9a178cce-3774-4253-8292-3606eb023031
+2026/04/05 14:31:52 INFO running job jobID=a1c23082-374d-423e-a2cd-74552397da69 kind=scrape request_id=a1c23082-374d-423e-a2cd-74552397da69
+2026/04/05 14:31:52 INFO processing scrape job jobID=a1c23082-374d-423e-a2cd-74552397da69 url=http://example.com/test request_id=""
+2026/04/05 14:31:52 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:52 INFO job succeeded jobID=d6f72984-d01f-418b-bd8e-0434a0b0fe61
+2026/04/05 14:31:52 INFO running job jobID=4832201a-f73f-401c-a0c7-9ab646f2a206 kind=scrape request_id=4832201a-f73f-401c-a0c7-9ab646f2a206
+2026/04/05 14:31:52 INFO processing scrape job jobID=4832201a-f73f-401c-a0c7-9ab646f2a206 url=http://example.com/test request_id=""
+2026/04/05 14:31:52 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:52 INFO job succeeded jobID=a1c23082-374d-423e-a2cd-74552397da69
+2026/04/05 14:31:52 INFO running job jobID=860739e4-277a-4177-8556-effc7f78a20a kind=scrape request_id=860739e4-277a-4177-8556-effc7f78a20a
+2026/04/05 14:31:52 INFO processing scrape job jobID=860739e4-277a-4177-8556-effc7f78a20a url=http://example.com/test request_id=""
+2026/04/05 14:31:52 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:52 INFO job succeeded jobID=4832201a-f73f-401c-a0c7-9ab646f2a206
+2026/04/05 14:31:52 INFO running job jobID=aad1218a-91ee-4003-a888-154e2f712bf6 kind=scrape request_id=aad1218a-91ee-4003-a888-154e2f712bf6
+2026/04/05 14:31:52 INFO processing scrape job jobID=aad1218a-91ee-4003-a888-154e2f712bf6 url=http://example.com/test request_id=""
+2026/04/05 14:31:52 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:53 INFO job succeeded jobID=860739e4-277a-4177-8556-effc7f78a20a
+2026/04/05 14:31:53 INFO running job jobID=5f47ae60-32c4-4a0d-9a11-6e42d8e42e03 kind=scrape request_id=5f47ae60-32c4-4a0d-9a11-6e42d8e42e03
+2026/04/05 14:31:53 INFO processing scrape job jobID=5f47ae60-32c4-4a0d-9a11-6e42d8e42e03 url=http://example.com/test request_id=""
+2026/04/05 14:31:53 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:53 INFO job succeeded jobID=aad1218a-91ee-4003-a888-154e2f712bf6
+2026/04/05 14:31:53 INFO running job jobID=67f355e2-b871-4db8-8f90-c9f1654e0378 kind=scrape request_id=67f355e2-b871-4db8-8f90-c9f1654e0378
+2026/04/05 14:31:53 INFO processing scrape job jobID=67f355e2-b871-4db8-8f90-c9f1654e0378 url=http://example.com/test request_id=""
+2026/04/05 14:31:53 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:53 INFO job succeeded jobID=5f47ae60-32c4-4a0d-9a11-6e42d8e42e03
+2026/04/05 14:31:53 INFO running job jobID=76cfa96d-2225-4796-9b2f-92be4795e49b kind=scrape request_id=76cfa96d-2225-4796-9b2f-92be4795e49b
+2026/04/05 14:31:53 INFO processing scrape job jobID=76cfa96d-2225-4796-9b2f-92be4795e49b url=http://example.com/test request_id=""
+2026/04/05 14:31:53 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:53 INFO job succeeded jobID=67f355e2-b871-4db8-8f90-c9f1654e0378
+2026/04/05 14:31:53 INFO running job jobID=13ed66c3-e49d-4c09-ab79-cc7270395aea kind=scrape request_id=13ed66c3-e49d-4c09-ab79-cc7270395aea
+2026/04/05 14:31:53 INFO processing scrape job jobID=13ed66c3-e49d-4c09-ab79-cc7270395aea url=http://example.com/test request_id=""
+2026/04/05 14:31:53 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:53 INFO job succeeded jobID=76cfa96d-2225-4796-9b2f-92be4795e49b
+2026/04/05 14:31:53 INFO running job jobID=2fd2b159-80df-4132-a678-422978037ed2 kind=scrape request_id=2fd2b159-80df-4132-a678-422978037ed2
+2026/04/05 14:31:53 INFO processing scrape job jobID=2fd2b159-80df-4132-a678-422978037ed2 url=http://example.com/test request_id=""
+2026/04/05 14:31:53 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:53 INFO job succeeded jobID=13ed66c3-e49d-4c09-ab79-cc7270395aea
+2026/04/05 14:31:53 INFO running job jobID=25afa87d-aef6-4aa7-ac81-3f027e144285 kind=scrape request_id=25afa87d-aef6-4aa7-ac81-3f027e144285
+2026/04/05 14:31:53 INFO processing scrape job jobID=25afa87d-aef6-4aa7-ac81-3f027e144285 url=http://example.com/test request_id=""
+2026/04/05 14:31:53 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:53 INFO job succeeded jobID=2fd2b159-80df-4132-a678-422978037ed2
+2026/04/05 14:31:53 INFO running job jobID=cb919bfc-129c-4383-97f6-8417434dff53 kind=scrape request_id=cb919bfc-129c-4383-97f6-8417434dff53
+2026/04/05 14:31:53 INFO processing scrape job jobID=cb919bfc-129c-4383-97f6-8417434dff53 url=http://example.com/test request_id=""
+2026/04/05 14:31:53 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:53 INFO job succeeded jobID=25afa87d-aef6-4aa7-ac81-3f027e144285
+2026/04/05 14:31:53 INFO running job jobID=293058c9-83d9-45d6-bc46-dad5f4579949 kind=scrape request_id=293058c9-83d9-45d6-bc46-dad5f4579949
+2026/04/05 14:31:53 INFO processing scrape job jobID=293058c9-83d9-45d6-bc46-dad5f4579949 url=http://example.com/test request_id=""
+2026/04/05 14:31:53 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:53 INFO job succeeded jobID=cb919bfc-129c-4383-97f6-8417434dff53
+2026/04/05 14:31:53 INFO running job jobID=d70e6e41-65ba-4645-aa83-4b2ffae518c1 kind=scrape request_id=d70e6e41-65ba-4645-aa83-4b2ffae518c1
+2026/04/05 14:31:53 INFO processing scrape job jobID=d70e6e41-65ba-4645-aa83-4b2ffae518c1 url=http://example.com/test request_id=""
+2026/04/05 14:31:53 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:53 INFO job succeeded jobID=293058c9-83d9-45d6-bc46-dad5f4579949
+2026/04/05 14:31:53 INFO running job jobID=0d773578-e8c7-440f-abdd-f8d9ccb52ae7 kind=scrape request_id=0d773578-e8c7-440f-abdd-f8d9ccb52ae7
+2026/04/05 14:31:53 INFO processing scrape job jobID=0d773578-e8c7-440f-abdd-f8d9ccb52ae7 url=http://example.com/test request_id=""
+2026/04/05 14:31:53 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:53 INFO job succeeded jobID=d70e6e41-65ba-4645-aa83-4b2ffae518c1
+2026/04/05 14:31:53 INFO running job jobID=9a22ea96-91cd-4124-a1ea-53ae5b69dad8 kind=scrape request_id=9a22ea96-91cd-4124-a1ea-53ae5b69dad8
+2026/04/05 14:31:53 INFO processing scrape job jobID=9a22ea96-91cd-4124-a1ea-53ae5b69dad8 url=http://example.com/test request_id=""
+2026/04/05 14:31:54 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:54 INFO job succeeded jobID=0d773578-e8c7-440f-abdd-f8d9ccb52ae7
+2026/04/05 14:31:54 INFO running job jobID=621c1f59-e4ed-4fd5-988f-3859485175e8 kind=scrape request_id=621c1f59-e4ed-4fd5-988f-3859485175e8
+2026/04/05 14:31:54 INFO processing scrape job jobID=621c1f59-e4ed-4fd5-988f-3859485175e8 url=http://example.com/test request_id=""
+2026/04/05 14:31:54 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:54 INFO job succeeded jobID=9a22ea96-91cd-4124-a1ea-53ae5b69dad8
+2026/04/05 14:31:54 INFO running job jobID=a7b3939f-f410-4701-babe-4c2df6801dda kind=scrape request_id=a7b3939f-f410-4701-babe-4c2df6801dda
+2026/04/05 14:31:54 INFO processing scrape job jobID=a7b3939f-f410-4701-babe-4c2df6801dda url=http://example.com/test request_id=""
+2026/04/05 14:31:54 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:54 INFO job succeeded jobID=621c1f59-e4ed-4fd5-988f-3859485175e8
+2026/04/05 14:31:54 INFO running job jobID=ff438295-8af8-4bc5-8806-aa27e543743b kind=scrape request_id=ff438295-8af8-4bc5-8806-aa27e543743b
+2026/04/05 14:31:54 INFO processing scrape job jobID=ff438295-8af8-4bc5-8806-aa27e543743b url=http://example.com/test request_id=""
+2026/04/05 14:31:54 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:54 INFO job succeeded jobID=a7b3939f-f410-4701-babe-4c2df6801dda
+2026/04/05 14:31:54 INFO running job jobID=45a49a49-16c0-4c4d-91a0-7c1383a5859d kind=scrape request_id=45a49a49-16c0-4c4d-91a0-7c1383a5859d
+2026/04/05 14:31:54 INFO processing scrape job jobID=45a49a49-16c0-4c4d-91a0-7c1383a5859d url=http://example.com/test request_id=""
+2026/04/05 14:31:54 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:54 INFO job succeeded jobID=ff438295-8af8-4bc5-8806-aa27e543743b
+2026/04/05 14:31:54 INFO running job jobID=26d4b251-b333-49b1-9757-16fb0d469130 kind=scrape request_id=26d4b251-b333-49b1-9757-16fb0d469130
+2026/04/05 14:31:54 INFO processing scrape job jobID=26d4b251-b333-49b1-9757-16fb0d469130 url=http://example.com/test request_id=""
+2026/04/05 14:31:54 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:54 INFO job succeeded jobID=45a49a49-16c0-4c4d-91a0-7c1383a5859d
+2026/04/05 14:31:54 INFO running job jobID=02508069-87cc-43a1-8251-369cd64bfef4 kind=scrape request_id=02508069-87cc-43a1-8251-369cd64bfef4
+2026/04/05 14:31:54 INFO processing scrape job jobID=02508069-87cc-43a1-8251-369cd64bfef4 url=http://example.com/test request_id=""
+2026/04/05 14:31:54 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:54 INFO job succeeded jobID=26d4b251-b333-49b1-9757-16fb0d469130
+2026/04/05 14:31:54 INFO running job jobID=c2fcc590-fada-48e0-a781-01e732ea7b8f kind=scrape request_id=c2fcc590-fada-48e0-a781-01e732ea7b8f
+2026/04/05 14:31:54 INFO processing scrape job jobID=c2fcc590-fada-48e0-a781-01e732ea7b8f url=http://example.com/test request_id=""
+2026/04/05 14:31:54 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:54 INFO job succeeded jobID=02508069-87cc-43a1-8251-369cd64bfef4
+2026/04/05 14:31:54 INFO running job jobID=63caa391-7898-4b83-b151-92f21ff9cf6a kind=scrape request_id=63caa391-7898-4b83-b151-92f21ff9cf6a
+2026/04/05 14:31:54 INFO processing scrape job jobID=63caa391-7898-4b83-b151-92f21ff9cf6a url=http://example.com/test request_id=""
+2026/04/05 14:31:54 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:54 INFO job succeeded jobID=c2fcc590-fada-48e0-a781-01e732ea7b8f
+2026/04/05 14:31:54 INFO scrape complete url=http://example.com/test status=404 title="Example Domain"
+2026/04/05 14:31:54 INFO job succeeded jobID=63caa391-7898-4b83-b151-92f21ff9cf6a
+--- PASS: TestManagerRecoverQueuedJobsPagination (9.93s)
+=== RUN   TestWebPreview
+    web_test.go:64: Starting process: pnpm exec vite preview --host 127.0.0.1 --port 55878 in TMPDIR/spartan-release-readiness.Kfazme/repo/web
+--- PASS: TestWebPreview (0.83s)
+=== RUN   TestNewJobCompactHiddenAssistantKeepsWorkflowVisible
+    web_test.go:95: Starting process: TMPDIR/system/rf/t1b4c_cn7sgc_f6tkyg0wsk00000gn/T/spartan-bin-3251300346/spartan server in TMPDIR/system/rf/t1b4c_cn7sgc_f6tkyg0wsk00000gn/T/TestNewJobCompactHiddenAssistantKeepsWorkflowVisible2326917717/002
+time=2026-04-05T14:31:55.915-06:00 level=INFO msg="starting job manager" concurrency=4
+time=2026-04-05T14:31:55.915-06:00 level=INFO msg="job recovery complete" totalRecovered=0
+time=2026-04-05T14:31:55.915-06:00 level=INFO msg="analytics collector started"
+time=2026-04-05T14:31:55.915-06:00 level=INFO msg="export trigger started" scheduleCount=0
+time=2026-04-05T14:31:55.916-06:00 level=INFO msg="Spartan server listening" addr=127.0.0.1:55916
+time=2026-04-05T14:31:55.916-06:00 level=INFO msg="started periodic db checkpoint" interval=5m
+time=2026-04-05T14:31:55.916-06:00 level=INFO msg="starting websocket hub"
+time=2026-04-05T14:31:55.982-06:00 level=INFO msg="request started" method=GET path=/healthz query="" remote_addr=127.0.0.1:55922 request_id=439563a4-8bc2-433d-bae7-0cce487b0c9e
+time=2026-04-05T14:31:55.983-06:00 level=INFO msg="request completed" method=GET path=/healthz status=200 duration_ms=0 request_id=439563a4-8bc2-433d-bae7-0cce487b0c9e
+    web_test.go:105: Starting process: pnpm exec vite preview --host 127.0.0.1 --port 55917 in TMPDIR/spartan-release-readiness.Kfazme/repo/web
+time=2026-04-05T14:31:58.886-06:00 level=INFO msg="request started" method=GET path=/healthz query="" remote_addr=127.0.0.1:56037 request_id=230d83c9-774f-4cfa-a594-5d030afa787e
+time=2026-04-05T14:31:58.887-06:00 level=INFO msg="request completed" method=GET path=/healthz status=200 duration_ms=0 request_id=230d83c9-774f-4cfa-a594-5d030afa787e
+time=2026-04-05T14:31:58.897-06:00 level=INFO msg="request started" method=GET path=/v1/jobs query="limit=100&offset=0" remote_addr=127.0.0.1:56039 request_id=a61577af-c721-41fb-b3e1-99c0ec1476d8
+time=2026-04-05T14:31:58.898-06:00 level=INFO msg="request completed" method=GET path=/v1/jobs status=200 duration_ms=0 request_id=a61577af-c721-41fb-b3e1-99c0ec1476d8
+time=2026-04-05T14:31:58.898-06:00 level=INFO msg="request started" method=GET path=/v1/jobs/failures query="limit=10&offset=0" remote_addr=127.0.0.1:56040 request_id=4c3bc6b7-6f09-4ae3-825a-e9c0d9823cc1
+time=2026-04-05T14:31:58.901-06:00 level=INFO msg="request completed" method=GET path=/v1/jobs/failures status=200 duration_ms=2 request_id=4c3bc6b7-6f09-4ae3-825a-e9c0d9823cc1
+time=2026-04-05T14:31:58.901-06:00 level=INFO msg="request started" method=GET path=/v1/metrics query="" remote_addr=127.0.0.1:56041 request_id=4d4cd51e-2002-4230-bd39-23d328c69b84
+time=2026-04-05T14:31:58.901-06:00 level=INFO msg="request completed" method=GET path=/v1/metrics status=200 duration_ms=0 request_id=4d4cd51e-2002-4230-bd39-23d328c69b84
+time=2026-04-05T14:31:58.901-06:00 level=INFO msg="request started" method=GET path=/v1/auth/profiles query="" remote_addr=127.0.0.1:56042 request_id=be0853d4-bb26-4e42-889e-ed8e17fd168e
+time=2026-04-05T14:31:58.901-06:00 level=INFO msg="request completed" method=GET path=/v1/auth/profiles status=200 duration_ms=0 request_id=be0853d4-bb26-4e42-889e-ed8e17fd168e
+time=2026-04-05T14:31:58.901-06:00 level=INFO msg="request started" method=GET path=/v1/templates query="" remote_addr=127.0.0.1:56043 request_id=d3175b41-3c86-43b1-9fd7-fd166c207355
+time=2026-04-05T14:31:58.901-06:00 level=INFO msg="request completed" method=GET path=/v1/templates status=200 duration_ms=0 request_id=d3175b41-3c86-43b1-9fd7-fd166c207355
+time=2026-04-05T14:31:58.901-06:00 level=INFO msg="request started" method=GET path=/v1/schedules query="" remote_addr=127.0.0.1:56044 request_id=d0c650af-5da7-4c54-b692-c5d8602c83ee
+time=2026-04-05T14:31:58.901-06:00 level=INFO msg="request completed" method=GET path=/v1/schedules status=200 duration_ms=0 request_id=d0c650af-5da7-4c54-b692-c5d8602c83ee
+time=2026-04-05T14:31:58.912-06:00 level=INFO msg="request started" method=GET path=/v1/crawl-states query="limit=100&offset=0" remote_addr=127.0.0.1:56046 request_id=7e6c063b-7a55-49c2-805d-3b8335b40b2f
+time=2026-04-05T14:31:58.912-06:00 level=INFO msg="request completed" method=GET path=/v1/crawl-states status=200 duration_ms=0 request_id=7e6c063b-7a55-49c2-805d-3b8335b40b2f
+time=2026-04-05T14:31:58.929-06:00 level=INFO msg="request started" method=GET path=/v1/ws query="" remote_addr=127.0.0.1:56048 request_id=dd32def0-6863-4e55-ac3b-81ebacead066
+time=2026-04-05T14:31:58.929-06:00 level=INFO msg="request completed" method=GET path=/v1/ws status=200 duration_ms=0 request_id=dd32def0-6863-4e55-ac3b-81ebacead066
+time=2026-04-05T14:31:59.044-06:00 level=INFO msg="request started" method=GET path=/healthz query="" remote_addr=127.0.0.1:56058 request_id=0e60e6e2-7014-4520-8da2-f9aebc23a29e
+time=2026-04-05T14:31:59.045-06:00 level=INFO msg="request completed" method=GET path=/healthz status=200 duration_ms=0 request_id=0e60e6e2-7014-4520-8da2-f9aebc23a29e
+time=2026-04-05T14:31:59.063-06:00 level=INFO msg="request started" method=GET path=/v1/metrics query="" remote_addr=127.0.0.1:56062 request_id=1673ba32-d526-4c8a-8260-cfff4a97ee7c
+time=2026-04-05T14:31:59.063-06:00 level=INFO msg="request completed" method=GET path=/v1/metrics status=200 duration_ms=0 request_id=1673ba32-d526-4c8a-8260-cfff4a97ee7c
+time=2026-04-05T14:31:59.064-06:00 level=INFO msg="request started" method=GET path=/v1/jobs/failures query="limit=10&offset=0" remote_addr=127.0.0.1:56061 request_id=835accd4-e858-435d-8857-02ed08a49ff4
+time=2026-04-05T14:31:59.065-06:00 level=INFO msg="request completed" method=GET path=/v1/jobs/failures status=200 duration_ms=0 request_id=835accd4-e858-435d-8857-02ed08a49ff4
+time=2026-04-05T14:31:59.065-06:00 level=INFO msg="request started" method=GET path=/v1/jobs query="limit=100&offset=0" remote_addr=127.0.0.1:56060 request_id=c277d421-bc80-48a7-96bb-4cef6d42cbd1
+time=2026-04-05T14:31:59.065-06:00 level=INFO msg="request completed" method=GET path=/v1/jobs status=200 duration_ms=0 request_id=c277d421-bc80-48a7-96bb-4cef6d42cbd1
+time=2026-04-05T14:31:59.065-06:00 level=INFO msg="request started" method=GET path=/v1/templates query="" remote_addr=127.0.0.1:56065 request_id=e7151df0-ec86-406a-9d58-8cc98658d053
+time=2026-04-05T14:31:59.065-06:00 level=INFO msg="request completed" method=GET path=/v1/templates status=200 duration_ms=0 request_id=e7151df0-ec86-406a-9d58-8cc98658d053
+time=2026-04-05T14:31:59.065-06:00 level=INFO msg="request started" method=GET path=/v1/auth/profiles query="" remote_addr=127.0.0.1:56063 request_id=1123899c-1632-4a7e-85b0-f57737da59dc
+time=2026-04-05T14:31:59.065-06:00 level=INFO msg="request completed" method=GET path=/v1/auth/profiles status=200 duration_ms=0 request_id=1123899c-1632-4a7e-85b0-f57737da59dc
+time=2026-04-05T14:31:59.065-06:00 level=INFO msg="request started" method=GET path=/v1/schedules query="" remote_addr=127.0.0.1:56064 request_id=cfeb861c-e82d-475e-b677-41cf5ea3d9cc
+time=2026-04-05T14:31:59.066-06:00 level=INFO msg="request completed" method=GET path=/v1/schedules status=200 duration_ms=0 request_id=cfeb861c-e82d-475e-b677-41cf5ea3d9cc
+time=2026-04-05T14:31:59.078-06:00 level=INFO msg="request started" method=GET path=/v1/ws query="" remote_addr=127.0.0.1:56069 request_id=e8ed7305-5cf8-49fe-be55-fca553a8837b
+time=2026-04-05T14:31:59.078-06:00 level=INFO msg="request completed" method=GET path=/v1/ws status=200 duration_ms=0 request_id=e8ed7305-5cf8-49fe-be55-fca553a8837b
+time=2026-04-05T14:31:59.078-06:00 level=INFO msg="request started" method=GET path=/v1/crawl-states query="limit=100&offset=0" remote_addr=127.0.0.1:56068 request_id=ae0472f5-0d4c-43b2-8022-e8af2497bd91
+time=2026-04-05T14:31:59.078-06:00 level=INFO msg="request completed" method=GET path=/v1/crawl-states status=200 duration_ms=0 request_id=ae0472f5-0d4c-43b2-8022-e8af2497bd91
+--- PASS: TestNewJobCompactHiddenAssistantKeepsWorkflowVisible (3.85s)
+PASS
+ok  	github.com/fitchmultz/spartan-scraper/internal/e2e	20.241s

@@ -21,3 +21,24 @@ This is the canonical source of truth for planned work, exploratory ideas, and s
 - Treat Web UI product-grade workflow improvements as higher priority than maintenance-only work and parity-only work until the primary operator journeys feel coherent, legible, and fast.
 - No backwards-compatibility shims are required for the Web UI cutover. Prefer the cleaner immediate product model when redesign choices conflict.
 
+## Audit-Driven Priorities (2026-04-01)
+
+See [docs/codebase-audit-2026-04-01.md](codebase-audit-2026-04-01.md) for the full audit catalog, metrics, and evidence.
+
+1. **Harden lifecycle cleanup and long-running backend control loops.**
+   - Make Playwright availability checks cancellable and cleanup-safe.
+   - Stop deleting job rows before artifact cleanup succeeds.
+   - Persist analytics snapshots outside collector critical sections.
+   - Ship these together with deterministic tests that exercise timeout, cleanup, and storage-failure paths.
+
+2. **Split the web job-authoring state model into smaller, feature-owned slices.**
+   - Break `useFormState` into narrower runtime/auth/AI/intercept modules instead of one shared god hook.
+   - Break `useBatches` into separate query, polling, and mutation primitives with explicit request ownership.
+   - Fix current stale-state/race bugs in `DeviceSelector` and `TransformPreview` as part of that same cutover.
+   - Preserve the current job-creation route structure while reducing cross-feature coupling.
+
+3. **Reduce UI implementation sprawl in the highest-churn operator surfaces.**
+   - Start with watch/export/auth/result detail surfaces where inline-style and component-size sprawl are highest.
+   - Move repeated layout/color primitives into shared classes/tokens instead of duplicating inline style objects.
+   - Use the refactor to shrink the largest Web files and keep future UX work localized.
+

@@ -51,7 +51,7 @@ export function extractClipboardImageFiles(
       continue;
     }
     const file = item.getAsFile();
-    if (!file || !file.type.startsWith("image/")) {
+    if (!file?.type.startsWith("image/")) {
       continue;
     }
     files.push(file);

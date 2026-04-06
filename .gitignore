@@ -5,6 +5,9 @@
 /extensions/dist/
 /out/
 
+# OS metadata
+.DS_Store
+
 # Local runtime data and caches
 /.data/
 /.ralph/

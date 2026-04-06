@@ -1,0 +1,6 @@
+Toolchain contract (.tool-versions)
+  Go:   expected 1.26.1 | actual 1.26.1
+  Node: expected 25.9 | actual 25.9.0
+  pnpm: expected 10.33.0 | actual 10.33.0
+node scripts/public_audit.mjs
+public_audit: no findings detected in tracked files.

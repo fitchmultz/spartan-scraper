@@ -39,7 +39,7 @@ PLAYWRIGHT_INSTALL_CMD := go run github.com/playwright-community/playwright-go/c
 
 verify-toolchain:
 	@set -euo pipefail; \
-	toolchain_file="$(CURDIR)/$(TOOLCHAIN_FILE)"; \
+	toolchain_file="$(TOOLCHAIN_FILE)"; \
 	expected_go="$(GO_VERSION)"; \
 	expected_node="$(NODE_VERSION)"; \
 	expected_pnpm="$(PNPM_VERSION)"; \
@@ -84,10 +84,10 @@ verify-toolchain:
 	exit $$status
 
 audit-public: verify-toolchain
-	node $(CURDIR)/scripts/public_audit.mjs
+	node scripts/public_audit.mjs
 
 secret-scan: verify-toolchain
-	go run github.com/zricethezav/gitleaks/v8@$(GITLEAKS_VERSION) detect --source $(CURDIR) --log-opts="--all" --gitleaks-ignore-path $(CURDIR)/.gitleaksignore --redact --no-banner
+	go run github.com/zricethezav/gitleaks/v8@$(GITLEAKS_VERSION) detect --source . --log-opts="--all" --gitleaks-ignore-path .gitleaksignore --redact --no-banner
 
 install: verify-toolchain
 	go mod download

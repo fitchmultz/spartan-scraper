@@ -134,16 +134,7 @@ Use `run_ci.sh` when you want profile-based invocation:
 ./run_ci.sh --profile full
 ./run_ci.sh --profile slow
 ./run_ci.sh --profile network
+./run_ci.sh --profile manual
 ```
-e secret-scan`
 
-## Convenience wrapper
-
-Use `run_ci.sh` when you want profile-based invocation:
-
-```bash
-./run_ci.sh --profile pr
-./run_ci.sh --profile full
-./run_ci.sh --profile slow
-./run_ci.sh --profile network
-```
+Run `make secret-scan` directly when you need the release-tier history scan; `run_ci.sh` does not provide a dedicated secret-scan profile.

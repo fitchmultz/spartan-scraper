@@ -5,7 +5,7 @@ This checklist is designed for a quick, high-confidence validation pass.
 ## 1) Build + test gate
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/fitchmultz/spartan-scraper.git
 cd spartan-scraper
 make verify-toolchain
 make ci-pr

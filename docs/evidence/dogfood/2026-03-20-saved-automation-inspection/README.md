@@ -8,7 +8,7 @@ Validate the first-save inspection loop for automation artifacts created from pr
 
 ## Environment
 
-- Backend: `DATA_DIR=/tmp/spartan-saved-automation-inspection.0OZyXa PORT=8751 ./bin/spartan server`
+- Backend: `DATA_DIR=TMPDIR/spartan-saved-automation-inspection.0OZyXa PORT=8751 ./bin/spartan server`
 - Frontend: `DEV_API_PROXY_TARGET=http://127.0.0.1:8751 pnpm exec vite --port 5177`
 - Web URL: `http://localhost:5177`
 - API URL: `http://127.0.0.1:8751`

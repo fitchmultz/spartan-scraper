@@ -8,12 +8,12 @@ Validate `/templates` close, discard, duplicate, builder, AI-apply, and save-fai
 
 ## Environment
 
-- Backend: `env -u PROXY_POOL_FILE DATA_DIR=/tmp/spartan-template-dogfood.BciHFv/data PORT=8761 PI_ENABLED=true PI_CONFIG_PATH=/tmp/spartan-template-dogfood.BciHFv/pi-routes.json ./bin/spartan server`
+- Backend: `env -u PROXY_POOL_FILE DATA_DIR=TMPDIR/spartan-template-dogfood.BciHFv/data PORT=8761 PI_ENABLED=true PI_CONFIG_PATH=TMPDIR/spartan-template-dogfood.BciHFv/pi-routes.json ./bin/spartan server`
 - Frontend: `cd web && DEV_API_PROXY_TARGET=http://127.0.0.1:8761 pnpm exec vite --host 127.0.0.1 --port 5182`
-- Fixture site: `python3 -m http.server 8772 --bind 127.0.0.1 -d /tmp/spartan-template-dogfood.BciHFv/site`
+- Fixture site: `python3 -m http.server 8772 --bind 127.0.0.1 -d TMPDIR/spartan-template-dogfood.BciHFv/site`
 - Web URL: `http://127.0.0.1:5182/templates`
 - API URL: `http://127.0.0.1:8761`
-- AI mode: fixture (`PI_CONFIG_PATH=/tmp/spartan-template-dogfood.BciHFv/pi-routes.json`)
+- AI mode: fixture (`PI_CONFIG_PATH=TMPDIR/spartan-template-dogfood.BciHFv/pi-routes.json`)
 
 ## Scenarios
 

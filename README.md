@@ -29,7 +29,7 @@ Planning and future work live in [docs/roadmap.md](docs/roadmap.md). That docume
 This walkthrough uses the default out-of-the-box path. Leave AI, proxy pooling, and retention off; they are optional and not needed for the first successful scrape.
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/fitchmultz/spartan-scraper.git
 cd spartan-scraper
 
 make verify-toolchain
@@ -90,7 +90,7 @@ The README keeps the fast first-success path near the top. For the guided contin
 
 ## Project Status
 
-Spartan Scraper is in **1.0.0-rc1 release prep**. The retained 1.0 core is now intentionally narrow and validated locally through `make ci-pr` and `make ci-slow`.
+Spartan Scraper is in **1.0.0-rc1 release prep**. Current release-readiness evidence for this tree lives in [docs/evidence/release-readiness/2026-04-05/README.md](docs/evidence/release-readiness/2026-04-05/README.md).
 
 ## Quickstart
 
@@ -99,7 +99,7 @@ Spartan Scraper is in **1.0.0-rc1 release prep**. The retained 1.0 core is now i
 go install github.com/fitchmultz/spartan-scraper/cmd/spartan@latest
 
 # Full local setup (recommended for contributors and operators)
-git clone <repo-url>
+git clone https://github.com/fitchmultz/spartan-scraper.git
 cd spartan-scraper
 make verify-toolchain
 make install
@@ -305,7 +305,7 @@ Proxy pooling and retention are optional too: leave `PROXY_POOL_FILE` unset and 
 Pinned in `.tool-versions`:
 
 - Go `1.26.1`
-- Node `25.8` (any `25.8.x` patch)
+- Node `25.9` (any `25.9.x` patch)
 - pnpm `10.33.0`
 
 Use a `.tool-versions`-compatible version manager (for example `mise install`) to provision those pinned versions, then run `make verify-toolchain` before build/test work.

@@ -1,0 +1,5 @@
+Spartan version: 1.0.0-rc1
+Commit:          5ad3cb5
+Build date:      2026-04-05T20:31:07Z
+Go version:      go1.26.1
+OS/Arch:         darwin/arm64

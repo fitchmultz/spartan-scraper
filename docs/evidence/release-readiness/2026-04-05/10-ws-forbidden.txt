@@ -1,0 +1,8 @@
+HTTP/1.1 403 Forbidden
+Content-Type: text/plain; charset=utf-8
+X-Content-Type-Options: nosniff
+X-Request-Id: 7cbbf52f-0219-458d-9736-0352bb5609c6
+Date: Sun, 05 Apr 2026 20:33:11 GMT
+Content-Length: 27
+
+forbidden websocket origin

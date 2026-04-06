@@ -68,7 +68,7 @@ export function WatchManager({
   } = useWatchForm();
 
   useEffect(() => {
-    if (!promotionSeed || !promotionSeed.eligible) {
+    if (!promotionSeed?.eligible) {
       return;
     }
 
