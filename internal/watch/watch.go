@@ -29,11 +29,8 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"strings"
 	"time"
 
-	"github.com/PuerkitoBio/goquery"
-	"github.com/andybalholm/cascadia"
 	"github.com/fitchmultz/spartan-scraper/internal/apperrors"
 	"github.com/fitchmultz/spartan-scraper/internal/config"
 	"github.com/fitchmultz/spartan-scraper/internal/diff"
@@ -378,52 +375,6 @@ func generateEventID() string {
 	return fmt.Sprintf("evt_%d", time.Now().UnixNano())
 }
 
-// extractSelector extracts content from HTML using a CSS selector.
-func extractSelector(html, selector string) (string, error) {
-	compiled, err := cascadia.Compile(selector)
-	if err != nil {
-		return "", fmt.Errorf("invalid selector %q: %w", selector, err)
-	}
-
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
-	if err != nil {
-		return "", err
-	}
-
-	matches := doc.FindMatcher(compiled)
-	if matches.Length() == 0 {
-		return "", fmt.Errorf("no elements matched selector %q", selector)
-	}
-
-	results := make([]string, 0, matches.Length())
-	matches.Each(func(_ int, s *goquery.Selection) {
-		text := strings.TrimSpace(s.Text())
-		if text != "" {
-			results = append(results, text)
-		}
-	})
-	if len(results) == 0 {
-		return "", fmt.Errorf("selector %q matched elements but extracted no text", selector)
-	}
-
-	return strings.Join(results, "\n"), nil
-}
-
-// extractTextFromHTML extracts clean text from HTML.
-func extractTextFromHTML(html string) string {
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
-	if err != nil {
-		return ""
-	}
-
-	// Remove script and style elements
-	doc.Find("script,style,noscript").Remove()
-
-	// Get text from body
-	bodyText := strings.TrimSpace(doc.Find("body").Text())
-	return strings.Join(strings.Fields(bodyText), " ")
-}
-
 // CheckAll checks all enabled watches and returns results.
 func (w *Watcher) CheckAll(ctx context.Context) ([]*WatchCheckResult, error) {
 	watches, err := w.storage.ListEnabled()
@@ -445,78 +396,4 @@ func (w *Watcher) CheckAll(ctx context.Context) ([]*WatchCheckResult, error) {
 	}
 
 	return results, nil
-}
-
-// computeVisualHash computes a simple perceptual hash for an image file.
-// Uses a hash of resized image data for basic perceptual similarity.
-func computeVisualHash(imagePath string) (string, error) {
-	data, err := os.ReadFile(imagePath)
-	if err != nil {
-		return "", fmt.Errorf("failed to read screenshot: %w", err)
-	}
-	// Compute hash of file contents
-	hash := sha256.Sum256(data)
-	return hex.EncodeToString(hash[:16]), nil // Use first 16 bytes for shorter hash
-}
-
-// generateVisualDiff creates a visual diff between two screenshots.
-// Returns the persisted diff artifact and similarity score.
-func (w *Watcher) generateVisualDiff(watchID, currentPath, previousPath string, threshold float64) (*Artifact, float64, error) {
-	if currentPath == "" || previousPath == "" {
-		return nil, 0, nil
-	}
-
-	// Check if both files exist
-	if _, err := os.Stat(currentPath); os.IsNotExist(err) {
-		return nil, 0, fmt.Errorf("current screenshot not found")
-	}
-	if _, err := os.Stat(previousPath); os.IsNotExist(err) {
-		return nil, 0, fmt.Errorf("previous screenshot not found")
-	}
-
-	// Read both files for comparison
-	currentData, err := os.ReadFile(currentPath)
-	if err != nil {
-		return nil, 0, fmt.Errorf("failed to read current screenshot: %w", err)
-	}
-	previousData, err := os.ReadFile(previousPath)
-	if err != nil {
-		return nil, 0, fmt.Errorf("failed to read previous screenshot: %w", err)
-	}
-
-	// Compute similarity based on content comparison
-	// This is a simplified similarity metric - in production would use image processing
-	var similarity float64
-	if len(previousData) > 0 {
-		// Use simple byte-level comparison as proxy
-		minLen := len(currentData)
-		if len(previousData) < minLen {
-			minLen = len(previousData)
-		}
-		if minLen > 0 {
-			diffCount := 0
-			for i := 0; i < minLen; i++ {
-				if currentData[i] != previousData[i] {
-					diffCount++
-				}
-			}
-			// Account for length difference
-			lengthDiff := len(currentData) - len(previousData)
-			if lengthDiff < 0 {
-				lengthDiff = -lengthDiff
-			}
-			diffCount += lengthDiff
-
-			maxDiff := len(currentData) + len(previousData)
-			if maxDiff > 0 {
-				similarity = 1.0 - float64(diffCount)/float64(maxDiff)
-			}
-		}
-	}
-
-	artifact, err := NewArtifactStore(w.dataDir).ReplaceVisualDiff(watchID, currentPath)
-	if err != nil {
-		return nil, similarity, fmt.Errorf("failed to write visual diff artifact: %w", err)
-	}
-	return &artifact, similarity, nil
 }

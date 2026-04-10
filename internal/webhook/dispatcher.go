@@ -30,14 +30,11 @@ import (
 	"crypto/sha256"
 	"crypto/tls"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
-	"mime/multipart"
 	"net"
 	"net/http"
-	"net/textproto"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -53,82 +50,6 @@ func generateID(r io.Reader) (string, error) {
 		return "", fmt.Errorf("failed to generate random ID: %w", err)
 	}
 	return hex.EncodeToString(b), nil
-}
-
-// EventType represents the type of webhook event.
-type EventType string
-
-const (
-	EventJobCreated      EventType = "job.created"
-	EventJobStarted      EventType = "job.started"
-	EventJobCompleted    EventType = "job.completed"
-	EventContentChanged  EventType = "content.changed"
-	EventPageCrawled     EventType = "page.crawled"
-	EventRetryAttempted  EventType = "retry.attempted"
-	EventExportCompleted EventType = "export.completed"
-	EventVisualChanged   EventType = "visual.changed"
-)
-
-// Payload represents webhook event metadata.
-//
-// Non-export events are delivered as a JSON body containing this payload.
-// Export-completed events are delivered as multipart/form-data with this payload
-// serialized in the `metadata` part and the rendered export bytes in the `export` part.
-type Payload struct {
-	EventID     string     `json:"eventId"`
-	EventType   EventType  `json:"eventType"`
-	Timestamp   time.Time  `json:"timestamp"`
-	JobID       string     `json:"jobId"`
-	JobKind     string     `json:"jobKind"`
-	Status      string     `json:"status"`
-	PrevStatus  string     `json:"prevStatus,omitempty"`
-	Error       string     `json:"error,omitempty"`
-	ResultURL   string     `json:"resultUrl,omitempty"`
-	CompletedAt *time.Time `json:"completedAt,omitempty"`
-
-	// Content change fields (populated when EventType is EventContentChanged)
-	URL          string `json:"url,omitempty"`
-	PreviousHash string `json:"previousHash,omitempty"`
-	CurrentHash  string `json:"currentHash,omitempty"`
-	DiffText     string `json:"diffText,omitempty"`
-	DiffHTML     string `json:"diffHtml,omitempty"`
-	Selector     string `json:"selector,omitempty"`
-
-	// Visual change fields (populated when EventType is EventVisualChanged)
-	VisualHash         string  `json:"visualHash,omitempty"`
-	PreviousVisualHash string  `json:"previousVisualHash,omitempty"`
-	VisualSimilarity   float64 `json:"visualSimilarity,omitempty"`
-
-	// Page crawled fields (populated when EventType is EventPageCrawled)
-	PageURL     string `json:"pageUrl,omitempty"`
-	PageStatus  int    `json:"pageStatus,omitempty"`
-	PageTitle   string `json:"pageTitle,omitempty"`
-	PageDepth   int    `json:"pageDepth,omitempty"`
-	IsDuplicate bool   `json:"isDuplicate,omitempty"`
-	DuplicateOf string `json:"duplicateOf,omitempty"`
-	CrawlSeqNum int    `json:"crawlSeqNum,omitempty"`
-
-	// Retry attempted fields (populated when EventType is EventRetryAttempted)
-	AttemptNumber int    `json:"attemptNumber,omitempty"`
-	MaxAttempts   int    `json:"maxAttempts,omitempty"`
-	RetryError    string `json:"retryError,omitempty"`
-	FetcherType   string `json:"fetcherType,omitempty"`
-
-	// Export completed fields (populated when EventType is EventExportCompleted)
-	ExportFormat string `json:"exportFormat,omitempty"`
-	Filename     string `json:"filename,omitempty"`
-	ContentType  string `json:"contentType,omitempty"`
-	RecordCount  int    `json:"recordCount,omitempty"`
-	ExportSize   int64  `json:"exportSize,omitempty"`
-}
-
-type deliveryRequest struct {
-	EventID     string
-	EventType   EventType
-	JobID       string
-	ContentType string
-	Body        []byte
-	Headers     map[string]string
 }
 
 type dispatchTask struct {
@@ -426,79 +347,6 @@ func (d *Dispatcher) clientForTarget(target deliveryTarget) (*http.Client, func(
 	return newPinnedHTTPClient(d.timeout, target, d.dialContext, d.tlsConfig)
 }
 
-func jsonDeliveryRequest(payload Payload) (deliveryRequest, error) {
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return deliveryRequest{}, fmt.Errorf("marshal payload: %w", err)
-	}
-	return deliveryRequest{
-		EventID:     payload.EventID,
-		EventType:   payload.EventType,
-		JobID:       payload.JobID,
-		ContentType: "application/json",
-		Body:        body,
-		Headers: map[string]string{
-			"X-Spartan-Webhook-Payload-Type": "event-json",
-			"X-Spartan-Webhook-Event-Type":   string(payload.EventType),
-		},
-	}, nil
-}
-
-func exportDeliveryRequest(payload Payload, content []byte) (deliveryRequest, error) {
-	if payload.EventType != EventExportCompleted {
-		return deliveryRequest{}, apperrors.Validation("export webhook delivery requires eventType export.completed")
-	}
-	if payload.Filename == "" {
-		return deliveryRequest{}, apperrors.Validation("export webhook delivery requires filename metadata")
-	}
-	if payload.ContentType == "" {
-		return deliveryRequest{}, apperrors.Validation("export webhook delivery requires contentType metadata")
-	}
-	if payload.ExportSize == 0 {
-		payload.ExportSize = int64(len(content))
-	}
-
-	var body bytes.Buffer
-	writer := multipart.NewWriter(&body)
-
-	metadataHeaders := textproto.MIMEHeader{}
-	metadataHeaders.Set("Content-Disposition", `form-data; name="metadata"`)
-	metadataHeaders.Set("Content-Type", "application/json")
-	metadataPart, err := writer.CreatePart(metadataHeaders)
-	if err != nil {
-		return deliveryRequest{}, fmt.Errorf("create metadata part: %w", err)
-	}
-	if err := json.NewEncoder(metadataPart).Encode(payload); err != nil {
-		return deliveryRequest{}, fmt.Errorf("encode metadata part: %w", err)
-	}
-
-	exportHeaders := textproto.MIMEHeader{}
-	exportHeaders.Set("Content-Disposition", fmt.Sprintf(`form-data; name="export"; filename=%q`, payload.Filename))
-	exportHeaders.Set("Content-Type", payload.ContentType)
-	exportPart, err := writer.CreatePart(exportHeaders)
-	if err != nil {
-		return deliveryRequest{}, fmt.Errorf("create export part: %w", err)
-	}
-	if _, err := exportPart.Write(content); err != nil {
-		return deliveryRequest{}, fmt.Errorf("write export part: %w", err)
-	}
-	if err := writer.Close(); err != nil {
-		return deliveryRequest{}, fmt.Errorf("close multipart writer: %w", err)
-	}
-
-	return deliveryRequest{
-		EventID:     payload.EventID,
-		EventType:   payload.EventType,
-		JobID:       payload.JobID,
-		ContentType: writer.FormDataContentType(),
-		Body:        body.Bytes(),
-		Headers: map[string]string{
-			"X-Spartan-Webhook-Payload-Type": "export-multipart",
-			"X-Spartan-Webhook-Event-Type":   string(payload.EventType),
-		},
-	}, nil
-}
-
 // Stats returns the current dispatcher queue and backpressure metrics.
 func (d *Dispatcher) Stats() Stats {
 	return Stats{
@@ -713,68 +561,4 @@ func (d *Dispatcher) signPayload(payload []byte, secret string) string {
 	mac := hmac.New(sha256.New, []byte(secret))
 	mac.Write(payload)
 	return hex.EncodeToString(mac.Sum(nil))
-}
-
-// ShouldSendEvent checks if the given event type matches the configured events.
-// Supported events: "completed", "failed", "canceled", "started", "created", "succeeded",
-// "content_changed", "page_crawled", "retry_attempted", "export_completed", "all".
-// An empty configuredEvents slice defaults to ["completed"].
-func ShouldSendEvent(eventType EventType, status string, configuredEvents []string) bool {
-	if len(configuredEvents) == 0 {
-		// Default: only send on terminal states (completed)
-		return eventType == EventJobCompleted
-	}
-
-	for _, e := range configuredEvents {
-		switch e {
-		case "all":
-			return true
-		case "started":
-			if eventType == EventJobStarted {
-				return true
-			}
-		case "created":
-			if eventType == EventJobCreated {
-				return true
-			}
-		case "completed":
-			if eventType == EventJobCompleted {
-				return true
-			}
-		case "failed":
-			if eventType == EventJobCompleted && status == "failed" {
-				return true
-			}
-		case "canceled":
-			if eventType == EventJobCompleted && status == "canceled" {
-				return true
-			}
-		case "succeeded":
-			if eventType == EventJobCompleted && status == "succeeded" {
-				return true
-			}
-		case "content_changed":
-			if eventType == EventContentChanged {
-				return true
-			}
-		case "page_crawled":
-			if eventType == EventPageCrawled {
-				return true
-			}
-		case "retry_attempted":
-			if eventType == EventRetryAttempted {
-				return true
-			}
-		case "export_completed":
-			if eventType == EventExportCompleted {
-				return true
-			}
-		case "visual_changed":
-			if eventType == EventVisualChanged {
-				return true
-			}
-		}
-	}
-
-	return false
 }
