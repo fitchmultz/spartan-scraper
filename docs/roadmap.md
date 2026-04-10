@@ -30,6 +30,7 @@ See [docs/codebase-audit-2026-04-01.md](codebase-audit-2026-04-01.md) for the fu
    - Stop deleting job rows before artifact cleanup succeeds.
    - Persist analytics snapshots outside collector critical sections.
    - Ship these together with deterministic tests that exercise timeout, cleanup, and storage-failure paths.
+   - File split prerequisite complete: `webhook/dispatcher`, `api/diagnostic_status`, and `watch/watch` now have focused sibling files so lifecycle hardening changes have smaller blast radius.
 
 2. **Split the web job-authoring state model into smaller, feature-owned slices.**
    - Break `useFormState` into narrower runtime/auth/AI/intercept modules instead of one shared god hook.
