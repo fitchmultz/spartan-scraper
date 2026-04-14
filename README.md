@@ -4,8 +4,8 @@
 [![CI Slow](https://github.com/fitchmultz/spartan-scraper/actions/workflows/ci-slow.yml/badge.svg)](https://github.com/fitchmultz/spartan-scraper/actions/workflows/ci-slow.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/fitchmultz/spartan-scraper)](https://goreportcard.com/report/github.com/fitchmultz/spartan-scraper)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-![Go Version](https://img.shields.io/badge/Go-1.26.1-00ADD8)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.9.3-3178C6)
+![Go Version](https://img.shields.io/badge/Go-1.26.2-00ADD8)
+![TypeScript](https://img.shields.io/badge/TypeScript-6.0.2-3178C6)
 
 Spartan Scraper is a local-first scraping workbench for turning a URL into a clean result, a bounded crawl, or a research job without standing up cloud infrastructure.
 
@@ -90,7 +90,7 @@ The README keeps the fast first-success path near the top. For the guided contin
 
 ## Project Status
 
-Spartan Scraper is in **1.0.0-rc1 release prep**. Current release-readiness evidence for this tree lives in [docs/evidence/release-readiness/2026-04-05/README.md](docs/evidence/release-readiness/2026-04-05/README.md).
+Spartan Scraper is in **1.0.0-rc1 release prep**. The latest published release-readiness evidence snapshot lives in [docs/evidence/release-readiness/2026-04-05/README.md](docs/evidence/release-readiness/2026-04-05/README.md).
 
 ## Quickstart
 
@@ -304,7 +304,7 @@ Proxy pooling and retention are optional too: leave `PROXY_POOL_FILE` unset and 
 
 Pinned in `.tool-versions`:
 
-- Go `1.26.1`
+- Go `1.26.2`
 - Node `25.9` (any `25.9.x` patch)
 - pnpm `10.33.0`
 

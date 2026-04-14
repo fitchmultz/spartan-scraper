@@ -6,9 +6,9 @@ Thank you for your interest in contributing! This document provides guidelines a
 
 ### Prerequisites
 
-- Go 1.26.1
-- Node 25.8.1
-- pnpm 10.32.1
+- Go 1.26.2
+- Node 25.9 (any 25.9.x patch)
+- pnpm 10.33.0
 - A `.tool-versions`-compatible version manager (for example `mise`) or those exact versions already active on `PATH`
 
 ### Quick Setup

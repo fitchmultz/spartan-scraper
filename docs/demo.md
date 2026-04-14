@@ -10,7 +10,7 @@ This walkthrough uses the default out-of-the-box path. Leave AI, proxy pooling, 
 
 ## Prerequisites
 
-- Go `1.26.1`
+- Go `1.26.2`
 - Node `25.9` (any `25.9.x` patch)
 - pnpm `10.33.0`
 - A `.tool-versions`-compatible version manager installed or the pinned versions already present on `PATH`
