@@ -57,9 +57,9 @@ describe("AIRenderProfileGenerator", () => {
           text: "Wait for the dashboard shell and prefer headless mode",
         },
         explanation: "Use headless mode for the app shell.",
-        route_id: "openai/gpt-5.4",
+        route_id: "openai/gpt-5.5",
         provider: "openai",
-        model: "gpt-5.4",
+        model: "gpt-5.5",
         visual_context_used: true,
       },
       request: new Request(
@@ -219,7 +219,7 @@ describe("AIRenderProfileGenerator", () => {
           resolved_goal: { source: "derived", text: "Derived goal v1" },
           route_id: "route-1",
           provider: "openai",
-          model: "gpt-5.4",
+          model: "gpt-5.5",
           visual_context_used: true,
         },
         request: new Request(
@@ -261,7 +261,7 @@ describe("AIRenderProfileGenerator", () => {
           },
           route_id: "route-3",
           provider: "openai",
-          model: "gpt-5.4",
+          model: "gpt-5.5",
         },
         request: new Request(
           "http://localhost:8741/v1/ai/render-profile-generate",

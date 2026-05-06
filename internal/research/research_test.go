@@ -321,9 +321,9 @@ func TestRunAgenticResearchAddsFollowUpAndSynthesis(t *testing.T) {
 					},
 				},
 				Confidence: 0.88,
-				RouteID:    "openai/gpt-5.4",
+				RouteID:    "openai/gpt-5.5",
 				Provider:   "openai",
-				Model:      "gpt-5.4",
+				Model:      "gpt-5.5",
 			},
 			{
 				Fields: map[string]extract.FieldValue{
@@ -357,9 +357,9 @@ func TestRunAgenticResearchAddsFollowUpAndSynthesis(t *testing.T) {
 					},
 				},
 				Confidence: 0.84,
-				RouteID:    "openai/gpt-5.4",
+				RouteID:    "openai/gpt-5.5",
 				Provider:   "openai",
-				Model:      "gpt-5.4",
+				Model:      "gpt-5.5",
 			},
 		},
 	}

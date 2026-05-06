@@ -102,14 +102,14 @@ function createToolResponse(options: {
 function createExtractBackend(content: AssistantMessage["content"]) {
   return new SDKBackend(
     {
-      [CAPABILITY_EXTRACT_NATURAL]: ["openai/gpt-5.4"],
+      [CAPABILITY_EXTRACT_NATURAL]: ["openai/gpt-5.5"],
     },
     {
       modelRegistry: createFakeModelRegistry({
         models: {
-          "openai/gpt-5.4": {
+          "openai/gpt-5.5": {
             provider: "openai",
-            id: "gpt-5.4",
+            id: "gpt-5.5",
             input: ["text", "image"],
           },
         },
@@ -120,7 +120,7 @@ function createExtractBackend(content: AssistantMessage["content"]) {
       completeFn: (async () =>
         createAssistantResponse({
           provider: "openai",
-          model: "gpt-5.4",
+          model: "gpt-5.5",
           content,
         })) as unknown as typeof import("@mariozechner/pi-ai").complete,
     },
@@ -129,9 +129,9 @@ function createExtractBackend(content: AssistantMessage["content"]) {
 
 test("ModelRegistry resolves preferred default pi model IDs", () => {
   const registry = ModelRegistry.inMemory(AuthStorage.inMemory());
-  assert.ok(registry.find("kimi-coding", "k2p5"));
-  assert.ok(registry.find("zai", "glm-5"));
-  assert.ok(registry.find("openai-codex", "gpt-5.4"));
+  assert.ok(registry.find("kimi-coding", "k2p6"));
+  assert.ok(registry.find("zai", "glm-5.1"));
+  assert.ok(registry.find("openai", "gpt-5.5"));
 });
 
 test("health reports only auth-ready routes as available", async () => {
@@ -141,7 +141,7 @@ test("health reports only auth-ready routes as available", async () => {
   const fakeModelRegistry = createFakeModelRegistry({
     authStorage,
     models: {
-      "openai/gpt-5.4": { provider: "openai", id: "gpt-5.4", input: ["text", "image"] },
+      "openai/gpt-5.5": { provider: "openai", id: "gpt-5.5", input: ["text", "image"] },
       "test-provider/test-model": { provider: "test-provider", id: "test-model", input: ["text"] },
     },
     apiKeys: {
@@ -151,7 +151,7 @@ test("health reports only auth-ready routes as available", async () => {
   const backend = new SDKBackend(
     {
       [CAPABILITY_EXTRACT_NATURAL]: [
-        "openai/gpt-5.4",
+        "openai/gpt-5.5",
         "test-provider/test-model",
       ],
     },
@@ -161,13 +161,13 @@ test("health reports only auth-ready routes as available", async () => {
   const health = await backend.health("/tmp/pi-agent");
 
   assert.deepEqual(health.available?.[CAPABILITY_EXTRACT_NATURAL], [
-    "openai/gpt-5.4",
+    "openai/gpt-5.5",
   ]);
   assert.deepEqual(health.route_status?.[CAPABILITY_EXTRACT_NATURAL], [
     {
-      route_id: "openai/gpt-5.4",
+      route_id: "openai/gpt-5.5",
       provider: "openai",
-      model: "gpt-5.4",
+      model: "gpt-5.5",
       status: "ready",
       model_found: true,
       auth_configured: true,
@@ -211,18 +211,18 @@ test("health reports missing models distinctly", async () => {
 test("runWithFallback returns the first successful route", async () => {
   const calls: string[] = [];
   const result = await runWithFallback(
-    ["openai/gpt-5.4", "kimi-coding/k2p5"],
+    ["openai/gpt-5.5", "kimi-coding/k2p6"],
     async (routeId) => {
       calls.push(routeId);
-      if (routeId === "openai/gpt-5.4") {
+      if (routeId === "openai/gpt-5.5") {
         throw new Error("simulated failure");
       }
       return routeId;
     },
   );
 
-  assert.equal(result, "kimi-coding/k2p5");
-  assert.deepEqual(calls, ["openai/gpt-5.4", "kimi-coding/k2p5"]);
+  assert.equal(result, "kimi-coding/k2p6");
+  assert.deepEqual(calls, ["openai/gpt-5.5", "kimi-coding/k2p6"]);
 });
 
 test("runWithFallback reports empty capabilities clearly", async () => {
@@ -236,16 +236,16 @@ test("runWithFallback aggregates ordered route failures", async () => {
   await assert.rejects(
     () =>
       runWithFallback(
-        ["openai/gpt-5.4", "kimi-coding/k2p5"],
+        ["openai/gpt-5.5", "kimi-coding/k2p6"],
         async (routeId) => {
-          if (routeId === "openai/gpt-5.4") {
+          if (routeId === "openai/gpt-5.5") {
             throw new Error("provider outage");
           }
           throw new Error("rate limited");
         },
         { capability: CAPABILITY_EXTRACT_NATURAL },
       ),
-    /all routes failed for capability extract\.natural_language after 2 attempts: openai\/gpt-5\.4: provider outage \| kimi-coding\/k2p5: rate limited/,
+    /all routes failed for capability extract\.natural_language after 2 attempts: openai\/gpt-5\.5: provider outage \| kimi-coding\/k2p6: rate limited/,
   );
 });
 
@@ -389,13 +389,13 @@ test("extract falls back to the next route after provider failure", async () => 
   const calls: string[] = [];
   const backend = new SDKBackend(
     {
-      [CAPABILITY_EXTRACT_NATURAL]: ["openai/gpt-5.4", "kimi-coding/k2p5"],
+      [CAPABILITY_EXTRACT_NATURAL]: ["openai/gpt-5.5", "kimi-coding/k2p6"],
     },
     {
       modelRegistry: createFakeModelRegistry({
         models: {
-          "openai/gpt-5.4": { provider: "openai", id: "gpt-5.4", input: ["text", "image"] },
-          "kimi-coding/k2p5": { provider: "kimi-coding", id: "k2p5", input: ["text"] },
+          "openai/gpt-5.5": { provider: "openai", id: "gpt-5.5", input: ["text", "image"] },
+          "kimi-coding/k2p6": { provider: "kimi-coding", id: "k2p6", input: ["text"] },
         },
         apiKeys: {
           openai: "openai-key",
@@ -432,10 +432,10 @@ test("extract falls back to the next route after provider failure", async () => 
     prompt: "Extract the title and price",
   });
 
-  assert.deepEqual(calls, ["openai/gpt-5.4", "kimi-coding/k2p5"]);
-  assert.equal(result.route_id, "kimi-coding/k2p5");
+  assert.deepEqual(calls, ["openai/gpt-5.5", "kimi-coding/k2p6"]);
+  assert.equal(result.route_id, "kimi-coding/k2p6");
   assert.equal(result.provider, "kimi-coding");
-  assert.equal(result.model, "k2p5");
+  assert.equal(result.model, "k2p6");
   assert.equal(result.tokens_used, 456);
   assert.deepEqual(result.fields.title.values, ["Fallback success"]);
 });
@@ -444,13 +444,13 @@ test("extract falls back after malformed model output", async () => {
   const calls: string[] = [];
   const backend = new SDKBackend(
     {
-      [CAPABILITY_EXTRACT_NATURAL]: ["openai/gpt-5.4", "kimi-coding/k2p5"],
+      [CAPABILITY_EXTRACT_NATURAL]: ["openai/gpt-5.5", "kimi-coding/k2p6"],
     },
     {
       modelRegistry: createFakeModelRegistry({
         models: {
-          "openai/gpt-5.4": { provider: "openai", id: "gpt-5.4", input: ["text", "image"] },
-          "kimi-coding/k2p5": { provider: "kimi-coding", id: "k2p5", input: ["text"] },
+          "openai/gpt-5.5": { provider: "openai", id: "gpt-5.5", input: ["text", "image"] },
+          "kimi-coding/k2p6": { provider: "kimi-coding", id: "k2p6", input: ["text"] },
         },
         apiKeys: {
           openai: "openai-key",
@@ -489,21 +489,21 @@ test("extract falls back after malformed model output", async () => {
     prompt: "Extract the title",
   });
 
-  assert.deepEqual(calls, ["openai/gpt-5.4", "kimi-coding/k2p5"]);
-  assert.equal(result.route_id, "kimi-coding/k2p5");
+  assert.deepEqual(calls, ["openai/gpt-5.5", "kimi-coding/k2p6"]);
+  assert.equal(result.route_id, "kimi-coding/k2p6");
   assert.deepEqual(result.fields.title.values, ["Recovered after malformed output"]);
 });
 
 test("generateTemplate reports aggregated fallback failures", async () => {
   const backend = new SDKBackend(
     {
-      [CAPABILITY_TEMPLATE_GENERATE]: ["openai/gpt-5.4", "kimi-coding/k2p5"],
+      [CAPABILITY_TEMPLATE_GENERATE]: ["openai/gpt-5.5", "kimi-coding/k2p6"],
     },
     {
       modelRegistry: createFakeModelRegistry({
         models: {
-          "openai/gpt-5.4": { provider: "openai", id: "gpt-5.4", input: ["text", "image"] },
-          "kimi-coding/k2p5": { provider: "kimi-coding", id: "k2p5", input: ["text"] },
+          "openai/gpt-5.5": { provider: "openai", id: "gpt-5.5", input: ["text", "image"] },
+          "kimi-coding/k2p6": { provider: "kimi-coding", id: "k2p6", input: ["text"] },
         },
         apiKeys: {
           openai: "openai-key",
@@ -541,19 +541,19 @@ test("generateTemplate reports aggregated fallback failures", async () => {
         url: "https://example.com/product",
         description: "Generate a product template",
       }),
-    /all routes failed for capability template\.generate after 2 attempts: openai\/gpt-5\.4: model did not call submit_template \| kimi-coding\/k2p5: template result must include at least one selector, jsonld rule, or regex rule/,
+    /all routes failed for capability template\.generate after 2 attempts: openai\/gpt-5\.5: model did not call submit_template \| kimi-coding\/k2p6: template result must include at least one selector, jsonld rule, or regex rule/,
   );
 });
 
 test("generateRenderProfile validates structured profile output", async () => {
   const backend = new SDKBackend(
     {
-      [CAPABILITY_RENDER_PROFILE_GENERATE]: ["openai/gpt-5.4"],
+      [CAPABILITY_RENDER_PROFILE_GENERATE]: ["openai/gpt-5.5"],
     },
     {
       modelRegistry: createFakeModelRegistry({
         models: {
-          "openai/gpt-5.4": { provider: "openai", id: "gpt-5.4", input: ["text", "image"] },
+          "openai/gpt-5.5": { provider: "openai", id: "gpt-5.5", input: ["text", "image"] },
         },
         apiKeys: {
           openai: "openai-key",
@@ -570,7 +570,7 @@ test("generateRenderProfile validates structured profile output", async () => {
             explanation: "Use a headless browser and wait for the main content.",
           },
           provider: "openai",
-          model: "gpt-5.4",
+          model: "gpt-5.5",
         })) as unknown as typeof import("@mariozechner/pi-ai").complete,
     },
   );
@@ -585,21 +585,21 @@ test("generateRenderProfile validates structured profile output", async () => {
     },
   );
 
-  assert.equal(result.route_id, "openai/gpt-5.4");
+  assert.equal(result.route_id, "openai/gpt-5.5");
   assert.equal(result.provider, "openai");
-  assert.equal(result.model, "gpt-5.4");
+  assert.equal(result.model, "gpt-5.5");
   assert.equal(result.profile.preferHeadless, true);
 });
 
 test("generateRenderProfile uses a default operator goal when instructions are omitted", async () => {
   const backend = new SDKBackend(
     {
-      [CAPABILITY_RENDER_PROFILE_GENERATE]: ["openai/gpt-5.4"],
+      [CAPABILITY_RENDER_PROFILE_GENERATE]: ["openai/gpt-5.5"],
     },
     {
       modelRegistry: createFakeModelRegistry({
         models: {
-          "openai/gpt-5.4": { provider: "openai", id: "gpt-5.4", input: ["text", "image"] },
+          "openai/gpt-5.5": { provider: "openai", id: "gpt-5.5", input: ["text", "image"] },
         },
         apiKeys: {
           openai: "openai-key",
@@ -625,7 +625,7 @@ test("generateRenderProfile uses a default operator goal when instructions are o
             },
           },
           provider: "openai",
-          model: "gpt-5.4",
+          model: "gpt-5.5",
         });
       }) as unknown as typeof import("@mariozechner/pi-ai").complete,
     },
@@ -646,12 +646,12 @@ test("generateRenderProfile uses a default operator goal when instructions are o
 test("refineResearch validates structured bounded research output", async () => {
   const backend = new SDKBackend(
     {
-      [CAPABILITY_RESEARCH_REFINE]: ["openai/gpt-5.4"],
+      [CAPABILITY_RESEARCH_REFINE]: ["openai/gpt-5.5"],
     },
     {
       modelRegistry: createFakeModelRegistry({
         models: {
-          "openai/gpt-5.4": { provider: "openai", id: "gpt-5.4", input: ["text", "image"] },
+          "openai/gpt-5.5": { provider: "openai", id: "gpt-5.5", input: ["text", "image"] },
         },
         apiKeys: {
           openai: "openai-key",
@@ -695,7 +695,7 @@ test("refineResearch validates structured bounded research output", async () => 
             explanation: "Rewrote the research brief into a tighter operator summary.",
           },
           provider: "openai",
-          model: "gpt-5.4",
+          model: "gpt-5.5",
         });
       }) as unknown as typeof import("@mariozechner/pi-ai").complete,
     },
@@ -723,9 +723,9 @@ test("refineResearch validates structured bounded research output", async () => 
     instructions: "Produce a concise operator-ready brief.",
   });
 
-  assert.equal(result.route_id, "openai/gpt-5.4");
+  assert.equal(result.route_id, "openai/gpt-5.5");
   assert.equal(result.provider, "openai");
-  assert.equal(result.model, "gpt-5.4");
+  assert.equal(result.model, "gpt-5.5");
   assert.equal(
     result.refined.conciseSummary,
     "Direct-sales pricing with documented support commitments.",
@@ -736,12 +736,12 @@ test("refineResearch validates structured bounded research output", async () => 
 test("shapeExport validates bounded export shape output", async () => {
   const backend = new SDKBackend(
     {
-      [CAPABILITY_EXPORT_SHAPE]: ["openai/gpt-5.4"],
+      [CAPABILITY_EXPORT_SHAPE]: ["openai/gpt-5.5"],
     },
     {
       modelRegistry: createFakeModelRegistry({
         models: {
-          "openai/gpt-5.4": { provider: "openai", id: "gpt-5.4", input: ["text", "image"] },
+          "openai/gpt-5.5": { provider: "openai", id: "gpt-5.5", input: ["text", "image"] },
         },
         apiKeys: {
           openai: "openai-key",
@@ -774,7 +774,7 @@ test("shapeExport validates bounded export shape output", async () => {
             explanation: "Selected export-ready fields and labels.",
           },
           provider: "openai",
-          model: "gpt-5.4",
+          model: "gpt-5.5",
         });
       }) as unknown as typeof import("@mariozechner/pi-ai").complete,
     },
@@ -792,9 +792,9 @@ test("shapeExport validates bounded export shape output", async () => {
     instructions: "Focus on pricing fields.",
   });
 
-  assert.equal(result.route_id, "openai/gpt-5.4");
+  assert.equal(result.route_id, "openai/gpt-5.5");
   assert.equal(result.provider, "openai");
-  assert.equal(result.model, "gpt-5.4");
+  assert.equal(result.model, "gpt-5.5");
   assert.deepEqual(result.shape.topLevelFields, ["url", "title", "status"]);
   assert.deepEqual(result.shape.normalizedFields, ["field.price"]);
   assert.equal(result.shape.formatting?.markdownTitle, "Pricing Export");
@@ -803,12 +803,12 @@ test("shapeExport validates bounded export shape output", async () => {
 test("generateTransform validates bounded transform output", async () => {
   const backend = new SDKBackend(
     {
-      [CAPABILITY_TRANSFORM_GENERATE]: ["openai/gpt-5.4"],
+      [CAPABILITY_TRANSFORM_GENERATE]: ["openai/gpt-5.5"],
     },
     {
       modelRegistry: createFakeModelRegistry({
         models: {
-          "openai/gpt-5.4": { provider: "openai", id: "gpt-5.4", input: ["text", "image"] },
+          "openai/gpt-5.5": { provider: "openai", id: "gpt-5.5", input: ["text", "image"] },
         },
         apiKeys: {
           openai: "openai-key",
@@ -832,7 +832,7 @@ test("generateTransform validates bounded transform output", async () => {
             explanation: "Projected the high-signal fields needed for export.",
           },
           provider: "openai",
-          model: "gpt-5.4",
+          model: "gpt-5.5",
         });
       }) as unknown as typeof import("@mariozechner/pi-ai").complete,
     },
@@ -855,9 +855,9 @@ test("generateTransform validates bounded transform output", async () => {
     instructions: "Project the URL and title for a lightweight export.",
   });
 
-  assert.equal(result.route_id, "openai/gpt-5.4");
+  assert.equal(result.route_id, "openai/gpt-5.5");
   assert.equal(result.provider, "openai");
-  assert.equal(result.model, "gpt-5.4");
+  assert.equal(result.model, "gpt-5.5");
   assert.equal(result.transform.language, "jmespath");
   assert.equal(result.transform.expression, "{title: title, url: url}");
 });
@@ -865,12 +865,12 @@ test("generateTransform validates bounded transform output", async () => {
 test("generatePipelineJs sends screenshot context as multimodal user content", async () => {
   const backend = new SDKBackend(
     {
-      [CAPABILITY_PIPELINE_JS_GENERATE]: ["openai/gpt-5.4"],
+      [CAPABILITY_PIPELINE_JS_GENERATE]: ["openai/gpt-5.5"],
     },
     {
       modelRegistry: createFakeModelRegistry({
         models: {
-          "openai/gpt-5.4": { provider: "openai", id: "gpt-5.4", input: ["text", "image"] },
+          "openai/gpt-5.5": { provider: "openai", id: "gpt-5.5", input: ["text", "image"] },
         },
         apiKeys: {
           openai: "openai-key",
@@ -895,7 +895,7 @@ test("generatePipelineJs sends screenshot context as multimodal user content", a
             explanation: "Wait for the main container and normalize scroll position.",
           },
           provider: "openai",
-          model: "gpt-5.4",
+          model: "gpt-5.5",
         });
       }) as unknown as typeof import("@mariozechner/pi-ai").complete,
     },
@@ -911,19 +911,19 @@ test("generatePipelineJs sends screenshot context as multimodal user content", a
     },
   );
 
-  assert.equal(result.route_id, "openai/gpt-5.4");
+  assert.equal(result.route_id, "openai/gpt-5.5");
   assert.deepEqual(result.script.selectors, ["main", "[data-ready='true']"]);
 });
 
 test("generatePipelineJs uses a default operator goal when instructions are omitted", async () => {
   const backend = new SDKBackend(
     {
-      [CAPABILITY_PIPELINE_JS_GENERATE]: ["openai/gpt-5.4"],
+      [CAPABILITY_PIPELINE_JS_GENERATE]: ["openai/gpt-5.5"],
     },
     {
       modelRegistry: createFakeModelRegistry({
         models: {
-          "openai/gpt-5.4": { provider: "openai", id: "gpt-5.4", input: ["text", "image"] },
+          "openai/gpt-5.5": { provider: "openai", id: "gpt-5.5", input: ["text", "image"] },
         },
         apiKeys: {
           openai: "openai-key",
@@ -948,7 +948,7 @@ test("generatePipelineJs uses a default operator goal when instructions are omit
             },
           },
           provider: "openai",
-          model: "gpt-5.4",
+          model: "gpt-5.5",
         });
       }) as unknown as typeof import("@mariozechner/pi-ai").complete,
     },
@@ -969,12 +969,12 @@ test("generatePipelineJs uses a default operator goal when instructions are omit
 test("extract sends screenshot context as multimodal user content", async () => {
   const backend = new SDKBackend(
     {
-      [CAPABILITY_EXTRACT_NATURAL]: ["openai/gpt-5.4"],
+      [CAPABILITY_EXTRACT_NATURAL]: ["openai/gpt-5.5"],
     },
     {
       modelRegistry: createFakeModelRegistry({
         models: {
-          "openai/gpt-5.4": { provider: "openai", id: "gpt-5.4", input: ["text", "image"] },
+          "openai/gpt-5.5": { provider: "openai", id: "gpt-5.5", input: ["text", "image"] },
         },
         apiKeys: {
           openai: "openai-key",
@@ -996,7 +996,7 @@ test("extract sends screenshot context as multimodal user content", async () => 
             confidence: 0.95,
           },
           provider: "openai",
-          model: "gpt-5.4",
+          model: "gpt-5.5",
         });
       }) as unknown as typeof import("@mariozechner/pi-ai").complete,
     },
@@ -1010,14 +1010,14 @@ test("extract sends screenshot context as multimodal user content", async () => 
     images: [{ data: "ZmFrZQ==", mime_type: "image/png" }],
   });
 
-  assert.equal(result.route_id, "openai/gpt-5.4");
+  assert.equal(result.route_id, "openai/gpt-5.5");
   assert.deepEqual(result.fields.title.values, ["Widget"]);
 });
 
 test("modelSupportsImages matches current verified model capabilities", () => {
   const registry = ModelRegistry.inMemory(AuthStorage.inMemory());
-  const openai = registry.find("openai", "gpt-5.4");
-  const zai = registry.find("zai", "glm-5");
+  const openai = registry.find("openai", "gpt-5.5");
+  const zai = registry.find("zai", "glm-5.1");
   assert.ok(openai);
   assert.ok(zai);
   assert.equal(modelSupportsImages(openai), true);

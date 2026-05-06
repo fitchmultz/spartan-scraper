@@ -146,11 +146,11 @@ func TestHealthIncludesCapabilityAwareAIDetails(t *testing.T) {
 				Capabilities: map[string]extract.AICapabilityHealth{
 					config.AICapabilityExtractNatural: {
 						Status:          "ok",
-						AvailableRoutes: []string{"openai/gpt-5.4"},
+						AvailableRoutes: []string{"openai/gpt-5.5"},
 					},
 					config.AICapabilityTemplateGeneration: {
 						Status:           "degraded",
-						ConfiguredRoutes: []string{"kimi-coding/k2p5"},
+						ConfiguredRoutes: []string{"kimi-coding/k2p6"},
 					},
 				},
 			},

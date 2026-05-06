@@ -41,7 +41,7 @@ describe("ResultsViewer agentic research rendering", () => {
         ],
         confidence: 0.84,
         provider: "openai",
-        model: "gpt-5.4",
+        model: "gpt-5.5",
       },
     };
 

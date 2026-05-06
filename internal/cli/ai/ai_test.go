@@ -202,9 +202,9 @@ func TestRunPreviewCallsRunnerAndPrintsJSON(t *testing.T) {
 		previewResult: aiauthoring.PreviewResult{
 			Fields:     map[string]extract.FieldValue{"title": {Values: []string{"Example"}, Source: extract.FieldSourceLLM}},
 			Confidence: 0.9,
-			RouteID:    "openai/gpt-5.4",
+			RouteID:    "openai/gpt-5.5",
 			Provider:   "openai",
-			Model:      "gpt-5.4",
+			Model:      "gpt-5.5",
 		},
 	}
 	withFakeRunner(t, runner)
@@ -226,7 +226,7 @@ func TestRunPreviewCallsRunnerAndPrintsJSON(t *testing.T) {
 	if len(runner.previewReq.Fields) != 2 || runner.previewReq.Fields[0] != "title" || runner.previewReq.Fields[1] != "price" {
 		t.Fatalf("unexpected fields: %#v", runner.previewReq.Fields)
 	}
-	if !strings.Contains(stdout, `"route_id": "openai/gpt-5.4"`) {
+	if !strings.Contains(stdout, `"route_id": "openai/gpt-5.5"`) {
 		t.Fatalf("expected JSON output, got %s", stdout)
 	}
 }
@@ -262,7 +262,7 @@ func TestRunTemplateReadsHTMLFileAndWritesOutputFile(t *testing.T) {
 	runner := &fakeAuthoringRunner{
 		templateResult: aiauthoring.TemplateResult{
 			Template: extract.Template{Name: "product-template", Selectors: []extract.SelectorRule{{Name: "title", Selector: "h1", Attr: "text"}}},
-			RouteID:  "openai/gpt-5.4",
+			RouteID:  "openai/gpt-5.5",
 		},
 	}
 	withFakeRunner(t, runner)

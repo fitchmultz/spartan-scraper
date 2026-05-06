@@ -37,19 +37,19 @@ test("loadBridgeConfig uses defaults without config file", () => {
   const config = loadBridgeConfig({});
   assert.equal(config.mode, "sdk");
   assert.deepEqual(config.routes[CAPABILITY_EXTRACT_NATURAL], [
-    "kimi-coding/k2p5",
-    "zai/glm-5",
-    "openai-codex/gpt-5.4",
+    "kimi-coding/k2p6",
+    "zai/glm-5.1",
+    "openai/gpt-5.5",
   ]);
   assert.deepEqual(config.routes[CAPABILITY_RESEARCH_REFINE], [
-    "kimi-coding/k2p5",
-    "zai/glm-5",
-    "openai-codex/gpt-5.4",
+    "kimi-coding/k2p6",
+    "zai/glm-5.1",
+    "openai/gpt-5.5",
   ]);
   assert.deepEqual(config.routes[CAPABILITY_EXPORT_SHAPE], [
-    "kimi-coding/k2p5",
-    "zai/glm-5",
-    "openai-codex/gpt-5.4",
+    "kimi-coding/k2p6",
+    "zai/glm-5.1",
+    "openai/gpt-5.5",
   ]);
 });
 
@@ -62,7 +62,7 @@ test("loadBridgeConfig loads route overrides from PI_CONFIG_PATH", () => {
       JSON.stringify({
         mode: "fixture",
         routes: {
-          [CAPABILITY_TEMPLATE_GENERATE]: ["kimi-coding/k2p5", "zai/glm-5"],
+          [CAPABILITY_TEMPLATE_GENERATE]: ["kimi-coding/k2p6", "zai/glm-5.1"],
         },
       }),
     );
@@ -70,8 +70,8 @@ test("loadBridgeConfig loads route overrides from PI_CONFIG_PATH", () => {
     const config = loadBridgeConfig({ PI_CONFIG_PATH: path });
     assert.equal(config.mode, "fixture");
     assert.deepEqual(config.routes[CAPABILITY_TEMPLATE_GENERATE], [
-      "kimi-coding/k2p5",
-      "zai/glm-5",
+      "kimi-coding/k2p6",
+      "zai/glm-5.1",
     ]);
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -96,9 +96,9 @@ test("loadBridgeConfig preserves explicit empty capability overrides", () => {
     assert.equal(config.mode, "fixture");
     assert.deepEqual(config.routes[CAPABILITY_TEMPLATE_GENERATE], []);
     assert.deepEqual(config.routes[CAPABILITY_EXTRACT_NATURAL], [
-      "kimi-coding/k2p5",
-      "zai/glm-5",
-      "openai-codex/gpt-5.4",
+      "kimi-coding/k2p6",
+      "zai/glm-5.1",
+      "openai/gpt-5.5",
     ]);
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -106,9 +106,9 @@ test("loadBridgeConfig preserves explicit empty capability overrides", () => {
 });
 
 test("parseRouteId validates provider/model IDs", () => {
-  assert.deepEqual(parseRouteId("openai/gpt-5.4"), {
+  assert.deepEqual(parseRouteId("openai/gpt-5.5"), {
     provider: "openai",
-    model: "gpt-5.4",
+    model: "gpt-5.5",
   });
   assert.throws(() => parseRouteId("broken-route"));
 });

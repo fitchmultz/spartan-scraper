@@ -44,9 +44,9 @@ describe("TransformPreview", () => {
                 },
               ],
               explanation: "Projected the title and URL fields for export.",
-              route_id: "openai/gpt-5.4",
+              route_id: "openai/gpt-5.5",
               provider: "openai",
-              model: "gpt-5.4",
+              model: "gpt-5.5",
             }),
             {
               status: 200,

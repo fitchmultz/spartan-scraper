@@ -257,7 +257,7 @@ describe("RenderProfileEditor", () => {
         },
         route_id: "route-1",
         provider: "openai",
-        model: "gpt-5.4",
+        model: "gpt-5.5",
       },
       error: undefined,
       request: new Request("http://localhost:8741/v1/ai/render-profile-debug"),
@@ -763,7 +763,7 @@ describe("RenderProfileEditor", () => {
           },
           route_id: "route-1",
           provider: "openai",
-          model: "gpt-5.4",
+          model: "gpt-5.5",
         },
         error: undefined,
         request: new Request(
@@ -786,7 +786,7 @@ describe("RenderProfileEditor", () => {
           },
           route_id: "route-2",
           provider: "openai",
-          model: "gpt-5.4",
+          model: "gpt-5.5",
         },
         error: undefined,
         request: new Request(

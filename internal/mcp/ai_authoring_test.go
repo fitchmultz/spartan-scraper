@@ -155,9 +155,9 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 				"title": {Values: []string{"Example"}, Source: extract.FieldSourceLLM},
 			},
 			Confidence: 0.93,
-			RouteID:    "openai/gpt-5.4",
+			RouteID:    "openai/gpt-5.5",
 			Provider:   "openai",
-			Model:      "gpt-5.4",
+			Model:      "gpt-5.5",
 		},
 		templateResults: []extract.AITemplateGenerateResult{
 			{
@@ -172,9 +172,9 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 					Selectors: []extract.SelectorRule{{Name: "title", Selector: "h1", Attr: "text"}},
 				},
 				Explanation: "Updated selectors after validation feedback",
-				RouteID:     "openai/gpt-5.4",
+				RouteID:     "openai/gpt-5.5",
 				Provider:    "openai",
-				Model:       "gpt-5.4",
+				Model:       "gpt-5.5",
 			},
 		},
 	}
@@ -182,16 +182,16 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 		renderProfileResult: piai.GenerateRenderProfileResult{
 			Profile:     piai.BridgeRenderProfile{PreferHeadless: true, Wait: piai.BridgeRenderWaitPolicy{Mode: "selector", Selector: "main"}},
 			Explanation: "Prefer headless mode and wait for the main element.",
-			RouteID:     "openai/gpt-5.4",
+			RouteID:     "openai/gpt-5.5",
 			Provider:    "openai",
-			Model:       "gpt-5.4",
+			Model:       "gpt-5.5",
 		},
 		pipelineJSResult: piai.GeneratePipelineJSResult{
 			Script:      piai.BridgePipelineJSScript{Selectors: []string{"main"}, PostNav: "window.scrollTo(0, 0);"},
 			Explanation: "Wait for the main element and normalize scroll position.",
-			RouteID:     "openai/gpt-5.4",
+			RouteID:     "openai/gpt-5.5",
 			Provider:    "openai",
-			Model:       "gpt-5.4",
+			Model:       "gpt-5.5",
 		},
 		researchRefineResult: piai.ResearchRefineResult{
 			Refined: piai.ResearchRefinedContent{
@@ -207,9 +207,9 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 				Confidence: 0.81,
 			},
 			Explanation: "Condensed the supplied research result into an operator brief.",
-			RouteID:     "openai/gpt-5.4",
+			RouteID:     "openai/gpt-5.5",
 			Provider:    "openai",
-			Model:       "gpt-5.4",
+			Model:       "gpt-5.5",
 		},
 		exportShapeResult: piai.ExportShapeResult{
 			Shape: piai.BridgeExportShapeConfig{
@@ -219,9 +219,9 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 				FieldLabels:      map[string]string{"field.price": "Price"},
 			},
 			Explanation: "Selected export-ready fields for the representative sample.",
-			RouteID:     "openai/gpt-5.4",
+			RouteID:     "openai/gpt-5.5",
 			Provider:    "openai",
-			Model:       "gpt-5.4",
+			Model:       "gpt-5.5",
 		},
 	}
 	aiExtractor := extract.NewAIExtractorWithProvider(
@@ -259,7 +259,7 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected preview result type, got %#v", previewResult)
 	}
-	if previewMap.RouteID != "openai/gpt-5.4" {
+	if previewMap.RouteID != "openai/gpt-5.5" {
 		t.Fatalf("unexpected route id: %q", previewMap.RouteID)
 	}
 	if provider.extractCalls != 1 {
@@ -309,9 +309,9 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 			Selectors: []extract.SelectorRule{{Name: "title", Selector: "h1", Attr: "text"}},
 		},
 		Explanation: "Updated selector to target the visible heading.",
-		RouteID:     "openai/gpt-5.4",
+		RouteID:     "openai/gpt-5.5",
 		Provider:    "openai",
-		Model:       "gpt-5.4",
+		Model:       "gpt-5.5",
 	}}
 	provider.templateCalls = 0
 	provider.lastTemplateReq = extract.AITemplateGenerateRequest{}
@@ -647,9 +647,9 @@ func TestHandleToolCallAIPreviewAndTemplateGeneration(t *testing.T) {
 			Language:   "jmespath",
 		},
 		Explanation: "Projected the URL and title fields.",
-		RouteID:     "openai/gpt-5.4",
+		RouteID:     "openai/gpt-5.5",
 		Provider:    "openai",
-		Model:       "gpt-5.4",
+		Model:       "gpt-5.5",
 	}
 	transformBase := map[string]json.RawMessage{
 		"params": mustMarshalJSON(map[string]interface{}{

@@ -960,7 +960,7 @@ This is deliberate: the project no longer attempts to open legacy layouts under 
 
 Core scraping workflows work without AI. Repo-local AI defaults live in `.env` and `config/pi-routes.json`, but they only matter after you opt in with `PI_ENABLED=true`.
 
-- Default pi route order: `kimi-coding/k2p5`, `zai/glm-5`, `openai-codex/gpt-5.4`
+- Default pi route order: `kimi-coding/k2p6`, `zai/glm-5.1`, `openai/gpt-5.5`
 - Spartan only passes route IDs to pi; pi continues to own auth, account selection, and billing behavior.
 - Override `PI_CONFIG_PATH` or edit `config/pi-routes.json` if you want a different local route order after enabling AI.
 

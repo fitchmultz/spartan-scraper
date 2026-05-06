@@ -180,9 +180,9 @@ func TestAIExtractPreviewIncludesProviderMetadata(t *testing.T) {
 				},
 			},
 			Confidence: 0.9,
-			RouteID:    "openai/gpt-5.4",
+			RouteID:    "openai/gpt-5.5",
 			Provider:   "openai",
-			Model:      "gpt-5.4",
+			Model:      "gpt-5.5",
 		},
 	}
 	srv.aiExtractor = extract.NewAIExtractorWithProvider(
@@ -210,10 +210,10 @@ func TestAIExtractPreviewIncludesProviderMetadata(t *testing.T) {
 	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
-	if resp.RouteID != "openai/gpt-5.4" || resp.Provider != "openai" || resp.Model != "gpt-5.4" {
+	if resp.RouteID != "openai/gpt-5.5" || resp.Provider != "openai" || resp.Model != "gpt-5.5" {
 		t.Fatalf("expected route/provider/model metadata, got %q %q/%q", resp.RouteID, resp.Provider, resp.Model)
 	}
-	if got := rr.Header().Get("X-Spartan-AI-Route"); got != "openai/gpt-5.4" {
+	if got := rr.Header().Get("X-Spartan-AI-Route"); got != "openai/gpt-5.5" {
 		t.Fatalf("expected X-Spartan-AI-Route header, got %q", got)
 	}
 }
@@ -284,9 +284,9 @@ func TestAIExtractPreviewFetchesHTMLWhenNotProvided(t *testing.T) {
 				},
 			},
 			Confidence: 0.91,
-			RouteID:    "openai/gpt-5.4",
+			RouteID:    "openai/gpt-5.5",
 			Provider:   "openai",
-			Model:      "gpt-5.4",
+			Model:      "gpt-5.5",
 		},
 	}
 	srv.aiExtractor = extract.NewAIExtractorWithProvider(
@@ -323,9 +323,9 @@ func TestAITemplateGenerateSupportsDirectHTML(t *testing.T) {
 					{Name: "title", Selector: "h1", Attr: "text", Trim: true},
 				},
 			},
-			RouteID:  "openai/gpt-5.4",
+			RouteID:  "openai/gpt-5.5",
 			Provider: "openai",
-			Model:    "gpt-5.4",
+			Model:    "gpt-5.5",
 		}},
 	}
 	srv.aiExtractor = extract.NewAIExtractorWithProvider(
@@ -387,9 +387,9 @@ func TestAITemplateGenerateFetchesHTMLAndRetriesValidation(t *testing.T) {
 					},
 				},
 				Explanation: "Selectors updated after validation feedback.",
-				RouteID:     "openai/gpt-5.4",
+				RouteID:     "openai/gpt-5.5",
 				Provider:    "openai",
-				Model:       "gpt-5.4",
+				Model:       "gpt-5.5",
 			},
 		},
 	}
@@ -427,10 +427,10 @@ func TestAITemplateGenerateFetchesHTMLAndRetriesValidation(t *testing.T) {
 	if len(resp.Template.Selectors) != 2 {
 		t.Fatalf("expected validated selectors in response, got %#v", resp.Template.Selectors)
 	}
-	if resp.RouteID != "openai/gpt-5.4" || resp.Provider != "openai" || resp.Model != "gpt-5.4" {
+	if resp.RouteID != "openai/gpt-5.5" || resp.Provider != "openai" || resp.Model != "gpt-5.5" {
 		t.Fatalf("expected route/provider/model metadata, got %q %q/%q", resp.RouteID, resp.Provider, resp.Model)
 	}
-	if got := rr.Header().Get("X-Spartan-AI-Model"); got != "gpt-5.4" {
+	if got := rr.Header().Get("X-Spartan-AI-Model"); got != "gpt-5.5" {
 		t.Fatalf("expected X-Spartan-AI-Model header, got %q", got)
 	}
 }
@@ -448,9 +448,9 @@ func TestAITemplateDebugSuggestsRepairsForBrokenTemplate(t *testing.T) {
 				},
 			},
 			Explanation: "Updated the selector to use the visible heading.",
-			RouteID:     "openai/gpt-5.4",
+			RouteID:     "openai/gpt-5.5",
 			Provider:    "openai",
-			Model:       "gpt-5.4",
+			Model:       "gpt-5.5",
 		}},
 	}
 	srv.aiExtractor = extract.NewAIExtractorWithProvider(
@@ -503,9 +503,9 @@ func TestAIRenderProfileGenerateReturnsValidatedProfile(t *testing.T) {
 		renderProfileResult: piai.GenerateRenderProfileResult{
 			Profile:     piai.BridgeRenderProfile{PreferHeadless: true, Wait: piai.BridgeRenderWaitPolicy{Mode: "selector", Selector: "main"}},
 			Explanation: "Use headless mode and wait for the main content.",
-			RouteID:     "openai/gpt-5.4",
+			RouteID:     "openai/gpt-5.5",
 			Provider:    "openai",
-			Model:       "gpt-5.4",
+			Model:       "gpt-5.5",
 		},
 	}
 	srv.cfg.AI = config.AIConfig{Enabled: true, Routing: config.DefaultAIRoutingConfig(), RequestTimeoutSecs: 30}
@@ -554,7 +554,7 @@ func TestAIRenderProfileGenerateReturnsValidatedProfile(t *testing.T) {
 	if resp.ResolvedGoal.Text != "Wait for the dashboard shell and prefer headless mode" {
 		t.Fatalf("unexpected resolved goal text: %q", resp.ResolvedGoal.Text)
 	}
-	if resp.RouteID != "openai/gpt-5.4" || resp.Provider != "openai" || resp.Model != "gpt-5.4" {
+	if resp.RouteID != "openai/gpt-5.5" || resp.Provider != "openai" || resp.Model != "gpt-5.5" {
 		t.Fatalf("expected route/provider/model metadata, got %q %q/%q", resp.RouteID, resp.Provider, resp.Model)
 	}
 }
@@ -615,9 +615,9 @@ func TestAIPipelineJSGenerateReturnsValidatedScript(t *testing.T) {
 		pipelineJSResult: piai.GeneratePipelineJSResult{
 			Script:      piai.BridgePipelineJSScript{Selectors: []string{"main"}, PostNav: "window.scrollTo(0, 0);"},
 			Explanation: "Wait for the main content and reset scroll position.",
-			RouteID:     "openai/gpt-5.4",
+			RouteID:     "openai/gpt-5.5",
 			Provider:    "openai",
-			Model:       "gpt-5.4",
+			Model:       "gpt-5.5",
 		},
 	}
 	srv.cfg.AI = config.AIConfig{Enabled: true, Routing: config.DefaultAIRoutingConfig(), RequestTimeoutSecs: 30}
@@ -721,9 +721,9 @@ func TestAIRenderProfileDebugReturnsIssuesAndSuggestion(t *testing.T) {
 		renderProfileResult: piai.GenerateRenderProfileResult{
 			Profile:     piai.BridgeRenderProfile{PreferHeadless: true, Wait: piai.BridgeRenderWaitPolicy{Mode: "selector", Selector: "main"}},
 			Explanation: "Prefer headless mode and wait for the main shell.",
-			RouteID:     "openai/gpt-5.4",
+			RouteID:     "openai/gpt-5.5",
 			Provider:    "openai",
-			Model:       "gpt-5.4",
+			Model:       "gpt-5.5",
 		},
 	}
 	srv.cfg.AI = config.AIConfig{Enabled: true, Routing: config.DefaultAIRoutingConfig(), RequestTimeoutSecs: 30}
@@ -782,9 +782,9 @@ func TestAIPipelineJSDebugReturnsIssuesAndSuggestion(t *testing.T) {
 		pipelineJSResult: piai.GeneratePipelineJSResult{
 			Script:      piai.BridgePipelineJSScript{Selectors: []string{"main"}, PostNav: "window.scrollTo(0, 0);"},
 			Explanation: "Wait for the main shell and normalize scroll.",
-			RouteID:     "openai/gpt-5.4",
+			RouteID:     "openai/gpt-5.5",
 			Provider:    "openai",
-			Model:       "gpt-5.4",
+			Model:       "gpt-5.5",
 		},
 	}
 	srv.cfg.AI = config.AIConfig{Enabled: true, Routing: config.DefaultAIRoutingConfig(), RequestTimeoutSecs: 30}
@@ -857,9 +857,9 @@ func TestAIResearchRefineReturnsStructuredRefinement(t *testing.T) {
 				Confidence: 0.81,
 			},
 			Explanation: "Condensed the existing research result into an operator brief.",
-			RouteID:     "openai/gpt-5.4",
+			RouteID:     "openai/gpt-5.5",
 			Provider:    "openai",
-			Model:       "gpt-5.4",
+			Model:       "gpt-5.5",
 		},
 	}
 	srv.cfg.AI = config.AIConfig{Enabled: true, Routing: config.DefaultAIRoutingConfig(), RequestTimeoutSecs: 30}
@@ -894,7 +894,7 @@ func TestAIResearchRefineReturnsStructuredRefinement(t *testing.T) {
 	if !strings.Contains(resp.Markdown, "Refined Research Brief") {
 		t.Fatalf("expected markdown output, got %q", resp.Markdown)
 	}
-	if got := rr.Header().Get("X-Spartan-AI-Route"); got != "openai/gpt-5.4" {
+	if got := rr.Header().Get("X-Spartan-AI-Route"); got != "openai/gpt-5.5" {
 		t.Fatalf("expected X-Spartan-AI-Route header, got %q", got)
 	}
 }
@@ -936,9 +936,9 @@ func TestAIExportShapeLoadsJobResultAndReturnsShape(t *testing.T) {
 				Formatting:       piai.ExportFormattingHints{MarkdownTitle: "Pricing Export"},
 			},
 			Explanation: "Selected high-signal export fields for the representative scrape result.",
-			RouteID:     "openai/gpt-5.4",
+			RouteID:     "openai/gpt-5.5",
 			Provider:    "openai",
-			Model:       "gpt-5.4",
+			Model:       "gpt-5.5",
 		},
 	}
 	srv.cfg.AI = config.AIConfig{Enabled: true, Routing: config.DefaultAIRoutingConfig(), RequestTimeoutSecs: 30}
@@ -972,7 +972,7 @@ func TestAIExportShapeLoadsJobResultAndReturnsShape(t *testing.T) {
 	if len(resp.Shape.NormalizedFields) != 2 || resp.Shape.NormalizedFields[0] != "field.price" {
 		t.Fatalf("unexpected shape: %#v", resp.Shape)
 	}
-	if got := rr.Header().Get("X-Spartan-AI-Route"); got != "openai/gpt-5.4" {
+	if got := rr.Header().Get("X-Spartan-AI-Route"); got != "openai/gpt-5.5" {
 		t.Fatalf("expected X-Spartan-AI-Route header, got %q", got)
 	}
 }
@@ -1010,9 +1010,9 @@ func TestAITransformGenerateLoadsJobResultAndReturnsTransform(t *testing.T) {
 				Language:   "jmespath",
 			},
 			Explanation: "Projected the title and URL for export.",
-			RouteID:     "openai/gpt-5.4",
+			RouteID:     "openai/gpt-5.5",
 			Provider:    "openai",
-			Model:       "gpt-5.4",
+			Model:       "gpt-5.5",
 		},
 	}
 	srv.cfg.AI = config.AIConfig{Enabled: true, Routing: config.DefaultAIRoutingConfig(), RequestTimeoutSecs: 30}
@@ -1052,7 +1052,7 @@ func TestAITransformGenerateLoadsJobResultAndReturnsTransform(t *testing.T) {
 	if !resp.InputStats.CurrentTransformProvided {
 		t.Fatalf("expected current transform indicator, got %#v", resp.InputStats)
 	}
-	if got := rr.Header().Get("X-Spartan-AI-Route"); got != "openai/gpt-5.4" {
+	if got := rr.Header().Get("X-Spartan-AI-Route"); got != "openai/gpt-5.5" {
 		t.Fatalf("expected X-Spartan-AI-Route header, got %q", got)
 	}
 }

@@ -241,7 +241,7 @@ func TestLoad_IgnoresLegacyAIProviderEnv(t *testing.T) {
 
 func TestDefaultAIRoutingConfig_UsesPreferredRouteOrder(t *testing.T) {
 	routing := DefaultAIRoutingConfig()
-	want := []string{"kimi-coding/k2p5", "zai/glm-5", "openai-codex/gpt-5.4"}
+	want := []string{"kimi-coding/k2p6", "zai/glm-5.1", "openai/gpt-5.5"}
 
 	for _, capability := range []string{
 		AICapabilityExtractNatural,
@@ -267,7 +267,7 @@ func TestLoad_LoadsPIConfigPathOverrides(t *testing.T) {
 	configFile := map[string]any{
 		"mode": "fixture",
 		"routes": map[string][]string{
-			AICapabilityTemplateGeneration: {"kimi-coding/k2p5", "zai/glm-5"},
+			AICapabilityTemplateGeneration: {"kimi-coding/k2p6", "zai/glm-5.1"},
 		},
 	}
 	data, err := json.Marshal(configFile)
@@ -290,7 +290,7 @@ func TestLoad_LoadsPIConfigPathOverrides(t *testing.T) {
 	if cfg.AI.Mode != "fixture" {
 		t.Fatalf("expected mode override from PI_CONFIG_PATH, got %q", cfg.AI.Mode)
 	}
-	if got := cfg.AI.Routing.RoutesFor(AICapabilityTemplateGeneration); len(got) != 2 || got[0] != "kimi-coding/k2p5" {
+	if got := cfg.AI.Routing.RoutesFor(AICapabilityTemplateGeneration); len(got) != 2 || got[0] != "kimi-coding/k2p6" {
 		t.Fatalf("unexpected template routes: %#v", got)
 	}
 }

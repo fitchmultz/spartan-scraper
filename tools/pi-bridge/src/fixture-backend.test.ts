@@ -14,7 +14,7 @@ import { validateExtractResult, validateTemplateResult } from "./validation.js";
 
 test("FixtureBackend produces deterministic extract output", () => {
   const backend = new FixtureBackend("fixture", {
-    [CAPABILITY_EXTRACT_NATURAL]: ["openai/gpt-5.4"],
+    [CAPABILITY_EXTRACT_NATURAL]: ["openai/gpt-5.5"],
   });
 
   const result = backend.extract(CAPABILITY_EXTRACT_NATURAL, {

@@ -65,9 +65,9 @@ func TestGenerateTransformBuildsValidatedPreview(t *testing.T) {
 			Language:   "jmespath",
 		},
 		Explanation: "Projected the export-friendly fields.",
-		RouteID:     "openai/gpt-5.4",
+		RouteID:     "openai/gpt-5.5",
 		Provider:    "openai",
-		Model:       "gpt-5.4",
+		Model:       "gpt-5.5",
 	}}}
 	service := NewServiceWithAutomationClient(
 		config.Config{AI: config.AIConfig{Enabled: true, RequestTimeoutSecs: 30}},

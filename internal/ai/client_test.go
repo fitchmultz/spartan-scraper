@@ -153,7 +153,7 @@ const rl = readline.createInterface({ input: process.stdin, crlfDelay: Infinity 
 const result = {
   mode: "sdk",
   resolved: {
-    "extract.natural_language": ["openai/gpt-5.4", "kimi-coding/k2p5"]
+    "extract.natural_language": ["openai/gpt-5.5", "kimi-coding/k2p6"]
   },
   available: {
     "extract.natural_language": []
@@ -161,18 +161,18 @@ const result = {
   route_status: {
     "extract.natural_language": [
       {
-        route_id: "openai/gpt-5.4",
+        route_id: "openai/gpt-5.5",
         provider: "openai",
-        model: "gpt-5.4",
+        model: "gpt-5.5",
         status: "missing_auth",
         message: "no auth configured for provider openai",
         model_found: true,
         auth_configured: false
       },
       {
-        route_id: "kimi-coding/k2p5",
+        route_id: "kimi-coding/k2p6",
         provider: "kimi-coding",
-        model: "k2p5",
+        model: "k2p6",
         status: "missing_auth",
         message: "no auth configured for provider kimi-coding",
         model_found: true,
@@ -205,7 +205,7 @@ rl.on("line", (line) => {
 	if !strings.Contains(err.Error(), "no auth-ready pi routes available") {
 		t.Fatalf("expected missing auth diagnostic, got %v", err)
 	}
-	if !strings.Contains(err.Error(), "openai/gpt-5.4") {
+	if !strings.Contains(err.Error(), "openai/gpt-5.5") {
 		t.Fatalf("expected route diagnostics in error, got %v", err)
 	}
 }
@@ -218,19 +218,19 @@ const rl = readline.createInterface({ input: process.stdin, crlfDelay: Infinity 
 const result = {
   mode: "sdk",
   resolved: {
-    "extract.natural_language": ["openai/gpt-5.4"],
-    "template.generate": ["kimi-coding/k2p5"]
+    "extract.natural_language": ["openai/gpt-5.5"],
+    "template.generate": ["kimi-coding/k2p6"]
   },
   available: {
-    "extract.natural_language": ["openai/gpt-5.4"],
+    "extract.natural_language": ["openai/gpt-5.5"],
     "template.generate": []
   },
   route_status: {
     "template.generate": [
       {
-        route_id: "kimi-coding/k2p5",
+        route_id: "kimi-coding/k2p6",
         provider: "kimi-coding",
-        model: "k2p5",
+        model: "k2p6",
         status: "missing_auth",
         message: "no auth configured for provider kimi-coding",
         model_found: true,
@@ -269,7 +269,7 @@ const rl = readline.createInterface({ input: process.stdin, crlfDelay: Infinity 
 const result = {
   mode: "sdk",
   resolved: {
-    "extract.natural_language": ["openai/gpt-5.4"]
+    "extract.natural_language": ["openai/gpt-5.5"]
   },
   available: {
     "extract.natural_language": []
@@ -277,9 +277,9 @@ const result = {
   route_status: {
     "extract.natural_language": [
       {
-        route_id: "openai/gpt-5.4",
+        route_id: "openai/gpt-5.5",
         provider: "openai",
-        model: "gpt-5.4",
+        model: "gpt-5.5",
         status: "missing_auth",
         message: "no auth configured for provider openai",
         model_found: true,

@@ -2,44 +2,44 @@
   "mode": "sdk",
   "routes": {
     "extract.natural_language": [
-      "kimi-coding/k2p5",
-      "zai/glm-5",
-      "openai-codex/gpt-5.4"
+      "kimi-coding/k2p6",
+      "zai/glm-5.1",
+      "openai/gpt-5.5"
     ],
     "extract.schema_guided": [
-      "kimi-coding/k2p5",
-      "zai/glm-5",
-      "openai-codex/gpt-5.4"
+      "kimi-coding/k2p6",
+      "zai/glm-5.1",
+      "openai/gpt-5.5"
     ],
     "template.generate": [
-      "kimi-coding/k2p5",
-      "zai/glm-5",
-      "openai-codex/gpt-5.4"
+      "kimi-coding/k2p6",
+      "zai/glm-5.1",
+      "openai/gpt-5.5"
     ],
     "render_profile.generate": [
-      "kimi-coding/k2p5",
-      "zai/glm-5",
-      "openai-codex/gpt-5.4"
+      "kimi-coding/k2p6",
+      "zai/glm-5.1",
+      "openai/gpt-5.5"
     ],
     "pipeline_js.generate": [
-      "kimi-coding/k2p5",
-      "zai/glm-5",
-      "openai-codex/gpt-5.4"
+      "kimi-coding/k2p6",
+      "zai/glm-5.1",
+      "openai/gpt-5.5"
     ],
     "research.refine": [
-      "kimi-coding/k2p5",
-      "zai/glm-5",
-      "openai-codex/gpt-5.4"
+      "kimi-coding/k2p6",
+      "zai/glm-5.1",
+      "openai/gpt-5.5"
     ],
     "export.shape": [
-      "kimi-coding/k2p5",
-      "zai/glm-5",
-      "openai-codex/gpt-5.4"
+      "kimi-coding/k2p6",
+      "zai/glm-5.1",
+      "openai/gpt-5.5"
     ],
     "transform.generate": [
-      "kimi-coding/k2p5",
-      "zai/glm-5",
-      "openai-codex/gpt-5.4"
+      "kimi-coding/k2p6",
+      "zai/glm-5.1",
+      "openai/gpt-5.5"
     ]
   }
 }

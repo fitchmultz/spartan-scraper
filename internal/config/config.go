@@ -231,9 +231,9 @@ func (r AIRoutingConfig) RouteFingerprint(capability string) string {
 // DefaultAIRoutingConfig returns the built-in pi routing defaults.
 func DefaultAIRoutingConfig() AIRoutingConfig {
 	defaultRouteOrder := []string{
-		"kimi-coding/k2p5",
-		"zai/glm-5",
-		"openai-codex/gpt-5.4",
+		"kimi-coding/k2p6",
+		"zai/glm-5.1",
+		"openai/gpt-5.5",
 	}
 	return AIRoutingConfig{
 		Routes: map[string][]string{

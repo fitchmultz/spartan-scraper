@@ -265,7 +265,7 @@ Non-browser clients without an `Origin` header remain supported.
 If you run the backend on a different local port, set `DEV_API_PROXY_TARGET=http://127.0.0.1:<port>` in `web/.env` so the dev proxy stays same-origin.
 Use `VITE_API_BASE_URL` only for deployed cross-origin builds where the browser should call a remote API directly.
 
-Repo-local AI defaults live in `.env` and `config/pi-routes.json`, but core scrape/crawl/research workflows work without AI. Leave `PI_ENABLED=false` for the default first run; when you later set `PI_ENABLED=true`, Spartan asks pi for routes in this order: `kimi-coding/k2p5`, `zai/glm-5`, `openai-codex/gpt-5.4`. Auth, account selection, and billing stay in pi; if you want a different route order or different provider/model IDs, override `PI_CONFIG_PATH` or edit that routes file locally.
+Repo-local AI defaults live in `.env` and `config/pi-routes.json`, but core scrape/crawl/research workflows work without AI. Leave `PI_ENABLED=false` for the default first run; when you later set `PI_ENABLED=true`, Spartan asks pi for routes in this order: `kimi-coding/k2p6`, `zai/glm-5.1`, `openai/gpt-5.5`. Auth, account selection, and billing stay in pi; if you want a different route order or different provider/model IDs, override `PI_CONFIG_PATH` or edit that routes file locally.
 
 Proxy pooling and retention are optional too: leave `PROXY_POOL_FILE` unset and `RETENTION_ENABLED=false` until you actually need pooled routing or automated cleanup.
 
