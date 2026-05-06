@@ -143,8 +143,7 @@ func (s *TwoCaptchaSolver) submit(ctx context.Context, detection CaptchaDetectio
 		params.Set("method", "turnstile")
 		params.Set("sitekey", detection.SiteKey)
 	case CaptchaTypeImage:
-		// For image CAPTCHA, we would need the image data
-		return "", apperrors.Validation("image CAPTCHA requires image data (not yet implemented)")
+		return "", apperrors.Validation("image CAPTCHA solving requires image data")
 	default:
 		return "", apperrors.Validation(fmt.Sprintf("unsupported CAPTCHA type: %s", detection.Type))
 	}
@@ -155,10 +154,7 @@ func (s *TwoCaptchaSolver) submit(ctx context.Context, detection CaptchaDetectio
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	slog.Debug("submitting captcha to 2captcha",
-		"type", detection.Type,
-		"pageURL", pageURL,
-	)
+	slog.Debug("submitting captcha to 2captcha", "type", detection.Type)
 
 	resp, err := s.client.Do(req)
 	if err != nil {

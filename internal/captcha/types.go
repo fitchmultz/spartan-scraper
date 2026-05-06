@@ -1,7 +1,7 @@
 // Package captcha provides CAPTCHA detection and solving service integration.
 //
 // This package is responsible for:
-//   - Detecting CAPTCHA challenges in HTML and headless-rendered pages
+//   - Detecting CAPTCHA challenges in fetched HTML
 //   - Integrating with solving services (2captcha, anti-captcha)
 //   - Managing CAPTCHA solving retry logic with exponential backoff
 //   - Providing metrics for CAPTCHA detection and solving

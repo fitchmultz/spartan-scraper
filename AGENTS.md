@@ -179,7 +179,7 @@ docs/                 # Documentation (usage, architecture, landscape)
 - **Wrapping**: Use `apperrors.Wrap(kind, "safe message", err)` to add context without exposing secrets in user-facing messages
 - **Sentinel errors**: Use `apperrors.WithKind(kind, sentinelErr)` for stable error text that can be compared with `errors.Is()`
 - **Never log secrets**: Always use `apperrors.SafeMessage(err)` when logging or returning errors to clients
-- **HTTP handlers**: Use `writeError(w, err)` from `internal/api/util.go` for consistent status code mapping (validation→400, not_found→404, permission→403, internal→500)
+- **HTTP handlers**: Use `writeError(w, r, err)` from `internal/api/util.go` for consistent status code mapping (validation→400, not_found→404, permission→403, internal→500)
 - **Check error kinds**: Use `apperrors.IsKind(err, apperrors.KindValidation)` to check error types, or `apperrors.KindOf(err)` to get the kind
 - **Error checking**: Use `errors.Is(err, sentinelErr)` and `errors.As(err, &typedErr)` for error inspection
 
@@ -221,11 +221,3 @@ The relevant files are:
 - `docs/usage.md`: CLI/API/Web/MCP entry points and flags
 - `docs/architecture.md`: System structure and data flow
 - `docs/landscape.md`: Project context and design decisions
-ns
- and data flow
-- `docs/landscape.md`: Project context and design decisions
-ns
-decisions
-ns
-decisions
-ns

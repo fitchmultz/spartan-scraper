@@ -1,6 +1,6 @@
 // Package captcha provides CAPTCHA detection and solving service integration.
 //
-// This file implements CAPTCHA detection logic for HTML and headless-rendered pages.
+// This file implements CAPTCHA detection logic for HTML.
 // It follows the same pattern as form_detect.go in the fetch package.
 //
 // Detection heuristics:
@@ -11,11 +11,9 @@
 //   - Image CAPTCHA: <img> with specific URL patterns, input fields with "captcha" in name/id
 //
 // It does NOT execute JavaScript to detect dynamically loaded CAPTCHAs.
-// For those, use DetectInChromedpPage or DetectInPlaywrightPage.
 package captcha
 
 import (
-	"context"
 	"fmt"
 	"regexp"
 	"strings"
@@ -403,22 +401,6 @@ func (d *Detector) detectImageCaptcha(doc *goquery.Document, pageURL string) *Ca
 	}
 }
 
-// DetectInChromedpPage detects CAPTCHA in a chromedp-rendered page.
-// This requires chromedp to be available.
-func (d *Detector) DetectInChromedpPage(ctx context.Context) (*CaptchaDetection, error) {
-	// This is a placeholder for chromedp-specific detection.
-	// The actual implementation would use chromedp to evaluate JavaScript
-	// and check for CAPTCHA-related elements in the DOM.
-	//
-	// Example:
-	// var html string
-	// if err := chromedp.Run(ctx, chromedp.OuterHTML("html", &html)); err != nil {
-	//     return nil, err
-	// }
-	// return d.Detect(html, "")
-	return nil, nil
-}
-
 // containsCaptchaKeyword checks if a string contains CAPTCHA-related keywords.
 func containsCaptchaKeyword(s string) bool {
 	s = strings.ToLower(s)
@@ -449,12 +431,4 @@ func extractSiteKey(js string) string {
 	}
 
 	return ""
-}
-
-// min returns the minimum of two float64 values.
-func min(a, b float64) float64 {
-	if a < b {
-		return a
-	}
-	return b
 }

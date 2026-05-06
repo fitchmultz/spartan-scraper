@@ -207,23 +207,3 @@ type TemplateRegistry struct {
 type TemplateFile struct {
 	Templates []Template `json:"templates"`
 }
-
-// MigrationRule defines a transformation from one schema version to another.
-type MigrationRule struct {
-	FromVersion string `json:"fromVersion"`
-	ToVersion   string `json:"toVersion"`
-	Transform   string `json:"transform,omitempty"` // JavaScript or JSONata expression
-}
-
-// SchemaVersionInfo tracks version metadata for a template.
-type SchemaVersionInfo struct {
-	Version        string          `json:"version,omitempty"`        // Semantic version of the template
-	SchemaVersion  string          `json:"schemaVersion,omitempty"`  // JSON Schema version (e.g., "2020-12")
-	MigrationRules []MigrationRule `json:"migrationRules,omitempty"` // Rules for migrating between versions
-}
-
-// ExtractOptionsVersioning contains options for schema version migration.
-type ExtractOptionsVersioning struct {
-	MigrateVersion bool   `json:"migrateVersion,omitempty"` // Auto-migrate if version mismatch
-	TargetVersion  string `json:"targetVersion,omitempty"`  // Target version to migrate to
-}
