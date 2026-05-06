@@ -136,8 +136,8 @@ async function run() {
 	});
 
 	await test('findPathFindings catches tracked artifact directories', () => {
-		const findings = module.findPathFindings('.ralph/done.json');
-		assert(findings.length > 0, 'Expected at least one finding for .ralph path');
+		const findings = module.findPathFindings('.cueloop/done.json');
+		assert(findings.length > 0, 'Expected at least one finding for .cueloop path');
 		assertEqual(findings[0].ruleId, 'tracked-artifact', 'Expected tracked-artifact rule ID');
 	});
 
@@ -296,7 +296,11 @@ async function run() {
 		assertEqual(module.branchExists(root, 'definitely-not-a-real-ref'), false, 'Expected fake ref to fail');
 	});
 
-	await test('HISTORY_PATH_RULES includes compiled binary path scanning', () => {
+	await test('HISTORY_PATH_RULES includes local artifact path scanning', () => {
+		assert(
+			module.HISTORY_PATH_RULES.some(rule => rule.pathspec === '.cueloop'),
+			'Expected history path rules to include .cueloop pathspec',
+		);
 		assert(
 			module.HISTORY_PATH_RULES.some(rule => rule.pathspec === 'bin'),
 			'Expected history path rules to include bin pathspec',

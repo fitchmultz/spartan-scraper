@@ -89,7 +89,7 @@ const TRACKED_PATH_RULES = [
 	{
 		id: 'tracked-artifact',
 		description: 'Tracked agent cache/log directory should be ignored',
-		pattern: /^\.ralph\//,
+		pattern: /^\.cueloop\//,
 	},
 	{
 		id: 'tracked-artifact',
@@ -127,7 +127,7 @@ const HISTORY_PATH_RULES = [
 	{
 		id: 'history-artifact',
 		description: 'Tracked agent cache/log directory exists in branch history',
-		pathspec: '.ralph',
+		pathspec: '.cueloop',
 	},
 	{
 		id: 'history-artifact',

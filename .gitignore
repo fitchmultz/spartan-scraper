@@ -10,7 +10,7 @@
 
 # Local runtime data and caches
 /.data/
-/.ralph/
+/.cueloop/
 /.scratchpad.md
 /scripts/.test-tmp/
 

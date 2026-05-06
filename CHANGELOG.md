@@ -39,7 +39,7 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
 - `make build` now builds artifacts only; `make install-bin` handles binary install side effects explicitly.
 - `docs/architecture.md` now starts with a concise quick overview section.
 - History reset to a sanitized public baseline and force-updated `main` to remove legacy private artifacts from branch history.
-- Removed tracked local runtime artifacts (`.ralph/*`, `out/smoke_test/*`) from the repository tree.
+- Removed tracked local runtime artifacts (`.cueloop/*`, `out/smoke_test/*`) from the repository tree.
 
 ## [0.1.0] - 2026-03-04
 
