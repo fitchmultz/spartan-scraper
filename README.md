@@ -1,7 +1,6 @@
 # Spartan Scraper
 
 [![CI PR](https://github.com/fitchmultz/spartan-scraper/actions/workflows/ci-pr.yml/badge.svg)](https://github.com/fitchmultz/spartan-scraper/actions/workflows/ci-pr.yml)
-[![CI Slow](https://github.com/fitchmultz/spartan-scraper/actions/workflows/ci-slow.yml/badge.svg)](https://github.com/fitchmultz/spartan-scraper/actions/workflows/ci-slow.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/fitchmultz/spartan-scraper)](https://goreportcard.com/report/github.com/fitchmultz/spartan-scraper)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 ![Go Version](https://img.shields.io/badge/Go-1.26.2-00ADD8)
