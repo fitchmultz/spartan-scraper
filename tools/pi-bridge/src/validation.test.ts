@@ -21,7 +21,7 @@ test("normalizeExtractResult canonicalizes primitive field values", () => {
     },
     {
       provider: "kimi-coding",
-      model: "k2p6",
+      model: "kimi-for-coding",
       tokens_used: 211,
     },
   );
@@ -34,7 +34,7 @@ test("normalizeExtractResult canonicalizes primitive field values", () => {
     },
     confidence: 0.95,
     provider: "kimi-coding",
-    model: "k2p6",
+    model: "kimi-for-coding",
     tokens_used: 211,
   });
 });

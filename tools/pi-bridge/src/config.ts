@@ -22,7 +22,7 @@ Invariants/Assumptions:
 - Explicit empty capability route arrays mean that capability is intentionally disabled.
 */
 import { readFileSync } from "node:fs";
-import { getAgentDir } from "@mariozechner/pi-coding-agent";
+import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import {
   CAPABILITY_EXTRACT_NATURAL,
   CAPABILITY_EXTRACT_SCHEMA,
@@ -47,7 +47,7 @@ export interface BridgeConfig {
 }
 
 export const DEFAULT_ROUTE_ORDER = [
-  "kimi-coding/k2p6",
+  "kimi-coding/kimi-for-coding",
   "zai/glm-5.1",
   "openai/gpt-5.5",
 ] as const;
