@@ -4,7 +4,7 @@
   "type": "module",
   "version": "0.1.0",
   "license": "Apache-2.0",
-  "packageManager": "pnpm@10.33.0",
+  "packageManager": "pnpm@10.0.0",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "pnpm run build && node --test dist/**/*.test.js"
@@ -16,5 +16,9 @@
   "dependencies": {
     "@earendil-works/pi-ai": "0.75.4",
     "@earendil-works/pi-coding-agent": "0.75.4"
+  },
+  "engines": {
+    "node": ">=22 <25",
+    "pnpm": ">=10 <11"
   }
 }
