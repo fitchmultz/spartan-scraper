@@ -45,3 +45,5 @@ qa-output/
 .manual-qa/
 .playwright-cli/
 .data-dogfood/
+-e .vscode/
+.pi/
