@@ -22,10 +22,11 @@ Invariants/Assumptions:
 */
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { loadBridgeConfig, parseRouteId } from "./config.js";
+import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent";
+import { loadBridgeConfig, parseRouteId, type BridgeConfigFile } from "./config.js";
 import {
   CAPABILITY_EXPORT_SHAPE,
   CAPABILITY_EXTRACT_NATURAL,
@@ -111,4 +112,21 @@ test("parseRouteId validates provider/model IDs", () => {
     model: "gpt-5.5",
   });
   assert.throws(() => parseRouteId("broken-route"));
+});
+
+test("repo pi route defaults resolve against current pi models", () => {
+  const registry = ModelRegistry.inMemory(AuthStorage.inMemory());
+  const config = JSON.parse(
+    readFileSync("../../config/pi-routes.json", "utf8"),
+  ) as BridgeConfigFile;
+
+  const missingRoutes = Object.values(config.routes ?? {})
+    .flat()
+    .filter((routeId, index, routes) => routes.indexOf(routeId) === index)
+    .filter((routeId) => {
+      const { provider, model } = parseRouteId(routeId);
+      return !registry.find(provider, model);
+    });
+
+  assert.deepEqual(missingRoutes, []);
 });

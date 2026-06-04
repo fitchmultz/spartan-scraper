@@ -6,6 +6,7 @@
  * Invariants/Assumptions: `validation.ts` remains the strict result boundary, matching tool calls beat text fallback, and text fallback only runs when no matching tool call exists.
  */
 import {
+  StringEnum,
   Type,
   complete,
   validateToolCall,
@@ -540,7 +541,11 @@ export class SDKBackend {
                 pattern: Type.String(),
                 group: Type.Optional(Type.Number()),
                 all: Type.Optional(Type.Boolean()),
-                source: Type.Optional(Type.String()),
+                source: Type.Optional(
+                  StringEnum(["text", "html", "url"] as const, {
+                    description: "Document source to evaluate the regex against.",
+                  }),
+                ),
                 required: Type.Optional(Type.Boolean()),
               }),
             ),
@@ -565,7 +570,11 @@ export class SDKBackend {
       description: "Submit a Spartan render profile patch for the provided page.",
       parameters: Type.Object({
         profile: Type.Object({
-          forceEngine: Type.Optional(Type.String()),
+          forceEngine: Type.Optional(
+            StringEnum(["http", "chromedp", "playwright"] as const, {
+              description: "Fetcher engine to force for matching pages.",
+            }),
+          ),
           preferHeadless: Type.Optional(Type.Boolean()),
           assumeJsHeavy: Type.Optional(Type.Boolean()),
           neverHeadless: Type.Optional(Type.Boolean()),
@@ -574,13 +583,23 @@ export class SDKBackend {
           rateLimitBurst: Type.Optional(Type.Number()),
           block: Type.Optional(
             Type.Object({
-              resourceTypes: Type.Optional(Type.Array(Type.String())),
+              resourceTypes: Type.Optional(
+                Type.Array(
+                  StringEnum(["image", "media", "font", "stylesheet", "other"] as const, {
+                    description: "Headless resource type to block.",
+                  }),
+                ),
+              ),
               urlPatterns: Type.Optional(Type.Array(Type.String())),
             }),
           ),
           wait: Type.Optional(
             Type.Object({
-              mode: Type.Optional(Type.String()),
+              mode: Type.Optional(
+                StringEnum(["dom_ready", "network_idle", "stability", "selector"] as const, {
+                  description: "Readiness policy before extraction.",
+                }),
+              ),
               selector: Type.Optional(Type.String()),
               networkIdleQuietMs: Type.Optional(Type.Number()),
               minTextLength: Type.Optional(Type.Number()),
@@ -600,7 +619,11 @@ export class SDKBackend {
             Type.Object({
               enabled: Type.Optional(Type.Boolean()),
               fullPage: Type.Optional(Type.Boolean()),
-              format: Type.Optional(Type.String()),
+              format: Type.Optional(
+                StringEnum(["png", "jpeg"] as const, {
+                  description: "Screenshot image format.",
+                }),
+              ),
               quality: Type.Optional(Type.Number()),
               width: Type.Optional(Type.Number()),
               height: Type.Optional(Type.Number()),
@@ -618,7 +641,11 @@ export class SDKBackend {
       description: "Submit a Spartan pipeline JS script for the provided page.",
       parameters: Type.Object({
         script: Type.Object({
-          engine: Type.Optional(Type.String()),
+          engine: Type.Optional(
+            StringEnum(["chromedp", "playwright"] as const, {
+              description: "Headless browser engine for this script.",
+            }),
+          ),
           preNav: Type.Optional(Type.String()),
           postNav: Type.Optional(Type.String()),
           selectors: Type.Optional(Type.Array(Type.String())),
@@ -691,7 +718,9 @@ export class SDKBackend {
       parameters: Type.Object({
         transform: Type.Object({
           expression: Type.String(),
-          language: Type.String(),
+          language: StringEnum(["jmespath", "jsonata"] as const, {
+            description: "Expression language used by the transform.",
+          }),
         }),
         explanation: Type.Optional(Type.String()),
       }),

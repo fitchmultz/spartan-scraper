@@ -14,8 +14,8 @@
     "typescript": "6.0.3"
   },
   "dependencies": {
-    "@earendil-works/pi-ai": "0.76.0",
-    "@earendil-works/pi-coding-agent": "0.76.0"
+    "@earendil-works/pi-ai": ">=0.78.1 <1",
+    "@earendil-works/pi-coding-agent": ">=0.78.1 <1"
   },
   "engines": {
     "node": ">=25 <26",
