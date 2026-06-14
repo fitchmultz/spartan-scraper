@@ -39,17 +39,17 @@ test("loadBridgeConfig uses defaults without config file", () => {
   assert.equal(config.mode, "sdk");
   assert.deepEqual(config.routes[CAPABILITY_EXTRACT_NATURAL], [
     "kimi-coding/kimi-for-coding",
-    "zai/glm-5.1",
+    "zai/glm-5.2",
     "openai/gpt-5.5",
   ]);
   assert.deepEqual(config.routes[CAPABILITY_RESEARCH_REFINE], [
     "kimi-coding/kimi-for-coding",
-    "zai/glm-5.1",
+    "zai/glm-5.2",
     "openai/gpt-5.5",
   ]);
   assert.deepEqual(config.routes[CAPABILITY_EXPORT_SHAPE], [
     "kimi-coding/kimi-for-coding",
-    "zai/glm-5.1",
+    "zai/glm-5.2",
     "openai/gpt-5.5",
   ]);
 });
@@ -63,7 +63,7 @@ test("loadBridgeConfig loads route overrides from PI_CONFIG_PATH", () => {
       JSON.stringify({
         mode: "fixture",
         routes: {
-          [CAPABILITY_TEMPLATE_GENERATE]: ["kimi-coding/kimi-for-coding", "zai/glm-5.1"],
+          [CAPABILITY_TEMPLATE_GENERATE]: ["kimi-coding/kimi-for-coding", "zai/glm-5.2"],
         },
       }),
     );
@@ -72,7 +72,7 @@ test("loadBridgeConfig loads route overrides from PI_CONFIG_PATH", () => {
     assert.equal(config.mode, "fixture");
     assert.deepEqual(config.routes[CAPABILITY_TEMPLATE_GENERATE], [
       "kimi-coding/kimi-for-coding",
-      "zai/glm-5.1",
+      "zai/glm-5.2",
     ]);
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -98,7 +98,7 @@ test("loadBridgeConfig preserves explicit empty capability overrides", () => {
     assert.deepEqual(config.routes[CAPABILITY_TEMPLATE_GENERATE], []);
     assert.deepEqual(config.routes[CAPABILITY_EXTRACT_NATURAL], [
       "kimi-coding/kimi-for-coding",
-      "zai/glm-5.1",
+      "zai/glm-5.2",
       "openai/gpt-5.5",
     ]);
   } finally {

@@ -241,7 +241,7 @@ func TestLoad_IgnoresLegacyAIProviderEnv(t *testing.T) {
 
 func TestDefaultAIRoutingConfig_UsesPreferredRouteOrder(t *testing.T) {
 	routing := DefaultAIRoutingConfig()
-	want := []string{"kimi-coding/k2p6", "zai/glm-5.1", "openai/gpt-5.5"}
+	want := []string{"kimi-coding/k2p6", "zai/glm-5.2", "openai/gpt-5.5"}
 
 	for _, capability := range []string{
 		AICapabilityExtractNatural,
@@ -267,7 +267,7 @@ func TestLoad_LoadsPIConfigPathOverrides(t *testing.T) {
 	configFile := map[string]any{
 		"mode": "fixture",
 		"routes": map[string][]string{
-			AICapabilityTemplateGeneration: {"kimi-coding/k2p6", "zai/glm-5.1"},
+			AICapabilityTemplateGeneration: {"kimi-coding/k2p6", "zai/glm-5.2"},
 		},
 	}
 	data, err := json.Marshal(configFile)

@@ -48,7 +48,7 @@ export interface BridgeConfig {
 
 export const DEFAULT_ROUTE_ORDER = [
   "kimi-coding/kimi-for-coding",
-  "zai/glm-5.1",
+  "zai/glm-5.2",
   "openai/gpt-5.5",
 ] as const;
 

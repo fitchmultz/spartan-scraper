@@ -232,7 +232,7 @@ func (r AIRoutingConfig) RouteFingerprint(capability string) string {
 func DefaultAIRoutingConfig() AIRoutingConfig {
 	defaultRouteOrder := []string{
 		"kimi-coding/k2p6",
-		"zai/glm-5.1",
+		"zai/glm-5.2",
 		"openai/gpt-5.5",
 	}
 	return AIRoutingConfig{

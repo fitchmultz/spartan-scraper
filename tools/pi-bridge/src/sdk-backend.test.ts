@@ -130,7 +130,7 @@ function createExtractBackend(content: AssistantMessage["content"]) {
 test("ModelRegistry resolves preferred default pi model IDs", () => {
   const registry = ModelRegistry.inMemory(AuthStorage.inMemory());
   assert.ok(registry.find("kimi-coding", "kimi-for-coding"));
-  assert.ok(registry.find("zai", "glm-5.1"));
+  assert.ok(registry.find("zai", "glm-5.2"));
   assert.ok(registry.find("openai", "gpt-5.5"));
 });
 
@@ -1017,7 +1017,7 @@ test("extract sends screenshot context as multimodal user content", async () => 
 test("modelSupportsImages matches current verified model capabilities", () => {
   const registry = ModelRegistry.inMemory(AuthStorage.inMemory());
   const openai = registry.find("openai", "gpt-5.5");
-  const zai = registry.find("zai", "glm-5.1");
+  const zai = registry.find("zai", "glm-5.2");
   assert.ok(openai);
   assert.ok(zai);
   assert.equal(modelSupportsImages(openai), true);
