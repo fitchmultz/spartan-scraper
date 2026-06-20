@@ -115,7 +115,7 @@ test("parseRouteId validates provider/model IDs", () => {
 });
 
 test("repo pi route defaults resolve against current pi models", () => {
-  const registry = ModelRegistry.inMemory(AuthStorage.inMemory());
+  const registry = ModelRegistry.create(AuthStorage.inMemory());
   const config = JSON.parse(
     readFileSync("../../config/pi-routes.json", "utf8"),
   ) as BridgeConfigFile;
