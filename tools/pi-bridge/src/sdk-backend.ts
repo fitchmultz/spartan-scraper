@@ -16,7 +16,7 @@ import {
   type Context,
   type ImageContent,
   type TextContent,
-} from "@earendil-works/pi-ai";
+} from "@earendil-works/pi-ai/compat";
 import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent";
 import type {
   ExportShapePayload,

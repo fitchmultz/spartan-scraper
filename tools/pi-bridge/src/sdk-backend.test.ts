@@ -7,7 +7,7 @@
  */
 import test from "node:test";
 import assert from "node:assert/strict";
-import type { AssistantMessage } from "@earendil-works/pi-ai";
+import type { AssistantMessage } from "@earendil-works/pi-ai/compat";
 import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent";
 import {
   SDKBackend,
@@ -122,7 +122,7 @@ function createExtractBackend(content: AssistantMessage["content"]) {
           provider: "openai",
           model: "gpt-5.5",
           content,
-        })) as unknown as typeof import("@earendil-works/pi-ai").complete,
+        })) as unknown as typeof import("@earendil-works/pi-ai/compat").complete,
     },
   );
 }
@@ -421,7 +421,7 @@ test("extract falls back to the next route after provider failure", async () => 
           model: model.id,
           tokens: 456,
         });
-      }) as unknown as typeof import("@earendil-works/pi-ai").complete,
+      }) as unknown as typeof import("@earendil-works/pi-ai/compat").complete,
     },
   );
 
@@ -478,7 +478,7 @@ test("extract falls back after malformed model output", async () => {
           provider: model.provider,
           model: model.id,
         });
-      }) as unknown as typeof import("@earendil-works/pi-ai").complete,
+      }) as unknown as typeof import("@earendil-works/pi-ai/compat").complete,
     },
   );
 
@@ -530,7 +530,7 @@ test("generateTemplate reports aggregated fallback failures", async () => {
           provider: model.provider,
           model: model.id,
         });
-      }) as unknown as typeof import("@earendil-works/pi-ai").complete,
+      }) as unknown as typeof import("@earendil-works/pi-ai/compat").complete,
     },
   );
 
@@ -571,7 +571,7 @@ test("generateRenderProfile validates structured profile output", async () => {
           },
           provider: "openai",
           model: "gpt-5.5",
-        })) as unknown as typeof import("@earendil-works/pi-ai").complete,
+        })) as unknown as typeof import("@earendil-works/pi-ai/compat").complete,
     },
   );
 
@@ -607,7 +607,7 @@ test("generateRenderProfile uses a default operator goal when instructions are o
       }),
       completeFn: (async (
         _model: FakeModel,
-        context: import("@earendil-works/pi-ai").Context,
+        context: import("@earendil-works/pi-ai/compat").Context,
       ) => {
         const userMessage = context.messages[0];
         assert.equal(userMessage.role, "user");
@@ -627,7 +627,7 @@ test("generateRenderProfile uses a default operator goal when instructions are o
           provider: "openai",
           model: "gpt-5.5",
         });
-      }) as unknown as typeof import("@earendil-works/pi-ai").complete,
+      }) as unknown as typeof import("@earendil-works/pi-ai/compat").complete,
     },
   );
 
@@ -659,7 +659,7 @@ test("refineResearch validates structured bounded research output", async () => 
       }),
       completeFn: (async (
         _model: FakeModel,
-        context: import("@earendil-works/pi-ai").Context,
+        context: import("@earendil-works/pi-ai/compat").Context,
       ) => {
         const userMessage = context.messages[0];
         assert.equal(userMessage.role, "user");
@@ -697,7 +697,7 @@ test("refineResearch validates structured bounded research output", async () => 
           provider: "openai",
           model: "gpt-5.5",
         });
-      }) as unknown as typeof import("@earendil-works/pi-ai").complete,
+      }) as unknown as typeof import("@earendil-works/pi-ai/compat").complete,
     },
   );
 
@@ -749,7 +749,7 @@ test("shapeExport validates bounded export shape output", async () => {
       }),
       completeFn: (async (
         _model: FakeModel,
-        context: import("@earendil-works/pi-ai").Context,
+        context: import("@earendil-works/pi-ai/compat").Context,
       ) => {
         const userMessage = context.messages[0];
         assert.equal(userMessage.role, "user");
@@ -776,7 +776,7 @@ test("shapeExport validates bounded export shape output", async () => {
           provider: "openai",
           model: "gpt-5.5",
         });
-      }) as unknown as typeof import("@earendil-works/pi-ai").complete,
+      }) as unknown as typeof import("@earendil-works/pi-ai/compat").complete,
     },
   );
 
@@ -816,7 +816,7 @@ test("generateTransform validates bounded transform output", async () => {
       }),
       completeFn: (async (
         _model: FakeModel,
-        context: import("@earendil-works/pi-ai").Context,
+        context: import("@earendil-works/pi-ai/compat").Context,
       ) => {
         const userMessage = context.messages[0];
         assert.equal(userMessage.role, "user");
@@ -834,7 +834,7 @@ test("generateTransform validates bounded transform output", async () => {
           provider: "openai",
           model: "gpt-5.5",
         });
-      }) as unknown as typeof import("@earendil-works/pi-ai").complete,
+      }) as unknown as typeof import("@earendil-works/pi-ai/compat").complete,
     },
   );
 
@@ -878,7 +878,7 @@ test("generatePipelineJs sends screenshot context as multimodal user content", a
       }),
       completeFn: (async (
         _model: FakeModel,
-        context: import("@earendil-works/pi-ai").Context,
+        context: import("@earendil-works/pi-ai/compat").Context,
       ) => {
         const userMessage = context.messages[0];
         assert.equal(userMessage.role, "user");
@@ -897,7 +897,7 @@ test("generatePipelineJs sends screenshot context as multimodal user content", a
           provider: "openai",
           model: "gpt-5.5",
         });
-      }) as unknown as typeof import("@earendil-works/pi-ai").complete,
+      }) as unknown as typeof import("@earendil-works/pi-ai/compat").complete,
     },
   );
 
@@ -931,7 +931,7 @@ test("generatePipelineJs uses a default operator goal when instructions are omit
       }),
       completeFn: (async (
         _model: FakeModel,
-        context: import("@earendil-works/pi-ai").Context,
+        context: import("@earendil-works/pi-ai/compat").Context,
       ) => {
         const userMessage = context.messages[0];
         assert.equal(userMessage.role, "user");
@@ -950,7 +950,7 @@ test("generatePipelineJs uses a default operator goal when instructions are omit
           provider: "openai",
           model: "gpt-5.5",
         });
-      }) as unknown as typeof import("@earendil-works/pi-ai").complete,
+      }) as unknown as typeof import("@earendil-works/pi-ai/compat").complete,
     },
   );
 
@@ -982,7 +982,7 @@ test("extract sends screenshot context as multimodal user content", async () => 
       }),
       completeFn: (async (
         _model: FakeModel,
-        context: import("@earendil-works/pi-ai").Context,
+        context: import("@earendil-works/pi-ai/compat").Context,
       ) => {
         const userMessage = context.messages[0];
         assert.equal(userMessage.role, "user");
@@ -998,7 +998,7 @@ test("extract sends screenshot context as multimodal user content", async () => 
           provider: "openai",
           model: "gpt-5.5",
         });
-      }) as unknown as typeof import("@earendil-works/pi-ai").complete,
+      }) as unknown as typeof import("@earendil-works/pi-ai/compat").complete,
     },
   );
 
