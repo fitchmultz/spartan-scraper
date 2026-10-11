@@ -160,7 +160,7 @@ docs/                 # Documentation (usage, architecture, landscape)
 - **HTTP**: Default fetcher
 - **Chromedp**: Headless Chromium (built-in, always available)
 - **Playwright**: Optional for JS-heavy pages — enable with `USE_PLAYWRIGHT=1` or `--playwright` flag
-- **Install Playwright**: `go run github.com/playwright-community/playwright-go/cmd/playwright@v0.5700.1 install --with-deps`
+- **Install Playwright**: Run `go run github.com/playwright-community/playwright-go/cmd/playwright install --with-deps` from the repository root.
 
 ### Robots.txt
 

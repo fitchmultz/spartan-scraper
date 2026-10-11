@@ -221,9 +221,9 @@ See [SECURITY.md](SECURITY.md) for instructions on how to report security vulner
 - **Chromedp**: Headless Chromium (built-in, always available)
 - **Playwright**: Optional for JS-heavy pages — enable with `USE_PLAYWRIGHT=1` or `--playwright` flag
 
-Install Playwright browsers:
+Install Playwright browsers from the repository root:
 ```bash
-go run github.com/playwright-community/playwright-go/cmd/playwright@v0.5700.1 install --with-deps
+go run github.com/playwright-community/playwright-go/cmd/playwright install --with-deps
 ```
 
 ## Questions?
